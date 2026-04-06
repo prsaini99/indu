@@ -1,5 +1,6 @@
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { Role } from '@prisma/client';
+import prisma from '../config/database';
 import {
   request,
   API,
@@ -7,7 +8,6 @@ import {
   createSuperAdmin,
   cleanupUser,
   getAnyGradeId,
-  getAnySubjectId,
 } from './helpers';
 
 const userIds: string[] = [];
@@ -16,7 +16,6 @@ let parentUserId: string;
 let adminToken: string;
 let adminUserId: string;
 let gradeId: string;
-let subjectId: string;
 
 beforeAll(async () => {
   // Create a parent
@@ -33,7 +32,6 @@ beforeAll(async () => {
 
   // Get reference data
   gradeId = (await getAnyGradeId()) || '';
-  subjectId = (await getAnySubjectId()) || '';
 });
 
 afterAll(async () => {
@@ -75,29 +73,25 @@ describe('M2: User Management', () => {
   });
 
   // ==========================================
-  // CHILDREN CRUD
+  // CHILDREN (read-only — children are admin-managed)
   // ==========================================
-  describe('Children CRUD', () => {
-    let childId: string;
-
-    it('POST /parents/children should create a child', async () => {
-      if (!gradeId) return; // skip if no grades seeded
-
-      const res = await request
-        .post(`${API}/parents/children`)
-        .set('Authorization', `Bearer ${parentToken}`)
-        .send({
-          firstName: 'Ali',
-          lastName: 'Parent',
-          gradeId,
-          dateOfBirth: '2015-06-15',
-          subjectIds: subjectId ? [subjectId] : undefined,
+  describe('Children (parent read access)', () => {
+    beforeAll(async () => {
+      if (!gradeId) return;
+      // Seed a child directly via DB (parents can't self-create — admin-only)
+      const parentProfile = await prisma.parentProfile.findUnique({
+        where: { userId: parentUserId },
+      });
+      if (parentProfile) {
+        await prisma.student.create({
+          data: {
+            parentId: parentProfile.id,
+            firstName: 'Ali',
+            lastName: 'Parent',
+            gradeId,
+          },
         });
-
-      expect(res.status).toBe(201);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.firstName).toBe('Ali');
-      childId = res.body.data.id;
+      }
     });
 
     it('GET /parents/children should list children', async () => {
@@ -108,37 +102,15 @@ describe('M2: User Management', () => {
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.some((c: { firstName: string }) => c.firstName === 'Ali')).toBe(true);
     });
 
-    it('PATCH /parents/children/:childId should update child', async () => {
-      if (!childId) return;
-
+    it('should reject non-parent role', async () => {
       const res = await request
-        .patch(`${API}/parents/children/${childId}`)
-        .set('Authorization', `Bearer ${parentToken}`)
-        .send({ firstName: 'Ali Updated', notes: 'Prefers visual learning' });
+        .get(`${API}/parents/children`)
+        .set('Authorization', `Bearer ${adminToken}`);
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.firstName).toBe('Ali Updated');
-    });
-
-    it('DELETE /parents/children/:childId should remove child', async () => {
-      if (!childId) return;
-
-      const res = await request
-        .delete(`${API}/parents/children/${childId}`)
-        .set('Authorization', `Bearer ${parentToken}`);
-
-      expect(res.status).toBe(200);
-    });
-
-    it('should reject creating child without grade', async () => {
-      const res = await request
-        .post(`${API}/parents/children`)
-        .set('Authorization', `Bearer ${parentToken}`)
-        .send({ firstName: 'No Grade' });
-
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(403);
     });
   });
 

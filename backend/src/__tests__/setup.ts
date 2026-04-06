@@ -1,3 +1,8 @@
+// BigInt JSON serialization (Zoom meeting IDs are BigInt) — must run before app import
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import { beforeAll, afterAll } from 'vitest';
 import prisma from '../config/database';
 

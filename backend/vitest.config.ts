@@ -9,6 +9,8 @@ export default defineConfig({
     testTimeout: 15000,
     hookTimeout: 30000,
     sequence: { concurrent: false },
+    // Tests share the dev DB — run files sequentially to avoid race conditions
+    fileParallelism: false,
     include: ['src/__tests__/**/*.test.ts'],
   },
   resolve: {

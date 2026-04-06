@@ -7,14 +7,14 @@ import {
   createAuthenticatedUser,
   createSuperAdmin,
   cleanupUser,
-  getAnySubjectId,
+  getOrCreateCourse,
 } from './helpers';
 
 const userIds: string[] = [];
 let tutorToken: string;
 let tutorProfileId: string;
 let adminToken: string;
-let subjectId: string | null;
+let courseId: string;
 
 beforeAll(async () => {
   // Create a tutor
@@ -31,8 +31,9 @@ beforeAll(async () => {
   adminToken = admin.token;
   userIds.push(admin.user.id);
 
-  // Get a subject
-  subjectId = await getAnySubjectId();
+  // Get a course (Mathematics — Grade 5 from seed data)
+  const seed = await getOrCreateCourse();
+  courseId = seed.course.id;
 });
 
 afterAll(async () => {
@@ -197,33 +198,27 @@ describe('M3: Tutor Management', () => {
       expect(res.body.data).toHaveProperty('totalSessions');
     });
 
-    it('POST /admin/tutors/:id/subjects should assign subject', async () => {
-      if (!subjectId) return;
-
+    it('POST /admin/tutors/:id/courses should assign course', async () => {
       const res = await request
-        .post(`${API}/admin/tutors/${tutorProfileId}/subjects`)
+        .post(`${API}/admin/tutors/${tutorProfileId}/courses`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ subjectId, tutorRate: 5000 });
+        .send({ courseId, tutorRate: 5000 });
 
       expect(res.status).toBe(201);
     });
 
-    it('POST duplicate subject should return 409', async () => {
-      if (!subjectId) return;
-
+    it('POST duplicate course should return 409', async () => {
       const res = await request
-        .post(`${API}/admin/tutors/${tutorProfileId}/subjects`)
+        .post(`${API}/admin/tutors/${tutorProfileId}/courses`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ subjectId, tutorRate: 5000 });
+        .send({ courseId, tutorRate: 5000 });
 
       expect(res.status).toBe(409);
     });
 
-    it('DELETE /admin/tutors/:id/subjects/:subjectId should remove subject', async () => {
-      if (!subjectId) return;
-
+    it('DELETE /admin/tutors/:id/courses/:courseId should remove course', async () => {
       const res = await request
-        .delete(`${API}/admin/tutors/${tutorProfileId}/subjects/${subjectId}`)
+        .delete(`${API}/admin/tutors/${tutorProfileId}/courses/${courseId}`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);

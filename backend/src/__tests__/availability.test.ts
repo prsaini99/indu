@@ -206,9 +206,11 @@ describe('M5: Availability & Scheduling', () => {
         .set('Authorization', `Bearer ${otherToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.data)).toBe(true);
+      // Response shape: { slots, blockedDates, tutorTimezone }
+      expect(res.body.data).toHaveProperty('slots');
+      expect(Array.isArray(res.body.data.slots)).toBe(true);
 
-      const slots = res.body.data;
+      const slots = res.body.data.slots;
       // Expected: Mon Mar 16, Wed Mar 18, Wed Mar 25, Mon Mar 29 (if within range) — Mar 23 (Mon) is blocked
       // Check that blocked Monday is excluded
       const blockedSlot = slots.find((s: { date: string }) => s.date === '2026-03-23');

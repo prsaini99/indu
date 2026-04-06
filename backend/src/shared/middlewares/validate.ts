@@ -11,7 +11,9 @@ export const validate = (schemas: ValidationSchemas) => {
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
       if (schemas.body) {
-        req.body = schemas.body.parse(req.body);
+        // Default undefined body to {} so endpoints with all-optional fields
+        // accept truly empty requests (e.g. PATCH without a JSON body)
+        req.body = schemas.body.parse(req.body ?? {});
       }
       if (schemas.params) {
         req.params = schemas.params.parse(req.params) as typeof req.params;

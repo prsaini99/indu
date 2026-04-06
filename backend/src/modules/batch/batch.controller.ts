@@ -44,14 +44,14 @@ export class BatchController {
 
   async cancelBatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await service.cancelBatch(req.params.id as string, req.body.reason);
+      const result = await service.cancelBatch(req.params.id as string, req.body?.reason);
       sendSuccess(res, result);
     } catch (error) { next(error); }
   }
 
   async removeStudent(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await service.removeStudent(req.params.id as string, req.params.studentId as string, req.body.reason);
+      const result = await service.removeStudent(req.params.id as string, req.params.studentId as string, req.body?.reason);
       sendSuccess(res, result);
     } catch (error) { next(error); }
   }
