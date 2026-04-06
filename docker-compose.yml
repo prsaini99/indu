@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: induae-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: induae
+      POSTGRES_PASSWORD: induae123
+      POSTGRES_DB: induae_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

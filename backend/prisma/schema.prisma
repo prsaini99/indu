@@ -1,0 +1,1164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// DELETION STRATEGY
+// ============================================
+// Soft delete (deletedAt): User, Student, TutorProfile, Course, CreditPackage
+//   → Entities that may be referenced historically but should be hidden from active use.
+//
+// Status-based lifecycle: Enrollment, Batch, Payment, Recording
+//   → These go through defined states (ACTIVE→CANCELLED, OPEN→COMPLETED, etc.)
+//     and are never truly deleted — they remain as historical records.
+//
+// Hard delete: CourseMaterial, Token, AdminPermission, Notification
+//   → Ephemeral or replaceable data. Cascade-deleted when parent entity is removed.
+//
+// Immutable ledger: CreditTransaction
+//   → Append-only audit trail. No updates, no deletes.
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  TUTOR
+  PARENT
+  CONSULTANT
+}
+
+enum Permission {
+  USER_MANAGEMENT
+  TUTOR_MANAGEMENT
+  COURSE_MANAGEMENT
+  BOOKING_OVERSIGHT
+  PAYMENT_MANAGEMENT
+  CREDIT_MANAGEMENT
+  TUTOR_PAYOUTS
+  CMS_MANAGEMENT
+  ANALYTICS_ACCESS
+  SYSTEM_CONFIG
+}
+
+enum DemoRequestStatus {
+  PENDING
+  ASSIGNED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum TimeSlotPreference {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+enum DemoBookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum ClassType {
+  ONE_TO_ONE
+  GROUP
+}
+
+enum BatchStatus {
+  OPEN
+  FULL
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED_PARENT
+  CANCELLED_LATE
+  SKIPPED
+  NO_SHOW_REPORTED
+  MISSED_TUTOR
+}
+
+enum NotificationType {
+  ENROLLMENT_CREATED
+  SESSION_REMINDER
+  PAYMENT_CONFIRMED
+  BATCH_JOINED
+  PAYOUT_RECORDED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApplicationRole {
+  TUTOR
+  CONSULTANT
+}
+
+enum EarningStatus {
+  UNPAID
+  PAID
+}
+
+// ============================================
+// TUTOR / CONSULTANT APPLICATION
+// ============================================
+
+model Application {
+  id        String            @id @default(uuid())
+  role      ApplicationRole
+  status    ApplicationStatus @default(PENDING)
+
+  // Personal info
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+
+  // Professional info
+  experience   Int       @default(0) // years
+  bio          String?
+  resumeUrl    String?
+  subjects     String?   // comma-separated subject names (free text from applicant)
+  qualifications String? // degrees, certifications, etc.
+
+  // Admin review
+  reviewedBy String?   // admin user ID who reviewed
+  reviewNote String?   // admin's internal note
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([role])
+  @@index([email])
+  @@index([createdAt])
+}
+
+// ============================================
+// M1: USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  role                Role
+  isActive            Boolean   @default(true)
+  isEmailVerified     Boolean   @default(false)
+  forcePasswordChange Boolean   @default(false)
+  lastLoginAt         DateTime?
+  timezone            String    @default("Asia/Dubai") // IANA timezone (e.g. "Asia/Kolkata", "Asia/Dubai")
+
+  // Role-specific profiles
+  parentProfile     ParentProfile?
+  tutorProfile      TutorProfile?
+  consultantProfile ConsultantProfile?
+
+  // Admin permissions (only for SUPER_ADMIN and ADMIN)
+  adminPermissions AdminPermission[]
+
+  // Tokens (refresh, verification, reset)
+  tokens Token[]
+
+  // V2: Student self-access
+  studentAccount Student?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}
+
+model AdminPermission {
+  id         String     @id @default(uuid())
+  userId     String
+  permission Permission
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, permission])
+  @@index([userId])
+}
+
+// ============================================
+// TOKEN STORAGE (replaces Redis)
+// ============================================
+
+enum TokenType {
+  REFRESH
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model Token {
+  id        String    @id @default(uuid())
+  userId    String
+  type      TokenType
+  value     String    @unique
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([value])
+  @@index([userId, type])
+  @@index([expiresAt])
+}
+
+// ============================================
+// M2: PARENT & STUDENT PROFILES
+// ============================================
+
+model ParentProfile {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  firstName String
+  lastName  String
+  phone     String?
+  address   String?
+  city      String?
+  country   String  @default("UAE")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  children     Student[]
+  demoRequests DemoRequest[]
+  creditTransactions CreditTransaction[]
+  enrollments  Enrollment[]
+  payments     Payment[]
+  batchStudents BatchStudent[]
+  reviews      Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id          String    @id @default(uuid())
+  parentId    String
+  userId      String?   @unique
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  gradeId     String
+  notes       String?
+
+  parent ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  user   User?         @relation(fields: [userId], references: [id])
+  grade  GradeLevel    @relation(fields: [gradeId], references: [id])
+
+  subjectNeeds      StudentSubject[]
+  demoBookings      DemoBooking[]
+  enrollments       Enrollment[]
+  batchStudents     BatchStudent[]
+  assessmentResults AssessmentResult[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([parentId])
+  @@index([gradeId])
+}
+
+model StudentSubject {
+  id        String @id @default(uuid())
+  studentId String
+  subjectId String
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, subjectId])
+}
+
+// ============================================
+// M2: TUTOR PROFILE
+// ============================================
+
+model TutorProfile {
+  id              String  @id @default(uuid())
+  userId          String  @unique
+  firstName       String
+  lastName        String
+  phone           String?
+  bio             String?
+  experience      Int     @default(0)
+  profilePhotoUrl String?
+  introVideoUrl   String?
+  isActive        Boolean @default(true)
+  noShowStrikes   Int     @default(0)
+  lastStrikeAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  certifications TutorCertification[]
+  courses        TutorCourse[]
+
+  // M5: Availability
+  availabilityTemplates AvailabilityTemplate[]
+  blockedDates          BlockedDate[]
+
+  // M6: Demo Bookings
+  demoBookings  DemoBooking[]
+  enrollments   Enrollment[]
+  batches       Batch[]
+
+  // M11, M15, M16: Post-booking
+  assessmentResults AssessmentResult[]
+  reviews           Review[]
+  tutorEarnings     TutorEarning[]
+  payoutRecords     PayoutRecord[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([isActive])
+}
+
+model TutorCertification {
+  id          String  @id @default(uuid())
+  tutorId     String
+  title       String
+  institution String?
+  year        Int?
+  documentUrl String
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
+}
+
+// ============================================
+// M2: CONSULTANT PROFILE
+// ============================================
+
+model ConsultantProfile {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  firstName String
+  lastName  String
+  phone     String?
+  email     String?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  demoRequests DemoRequest[]
+  demoBookings  DemoBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// M4: SUBJECT & GRADE (Reference tables — needed by M2)
+// ============================================
+
+model Subject {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  studentNeeds        StudentSubject[]
+  demoRequestSubjects DemoRequestSubject[]
+  courses             Course[]
+  demoBookings        DemoBooking[]
+  enrollments         Enrollment[]
+  batches             Batch[]
+  assessmentResults   AssessmentResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+model GradeLevel {
+  id        String @id @default(uuid())
+  name      String @unique
+  sortOrder Int    @unique
+  tierId    String
+
+  tier         GradeTier     @relation(fields: [tierId], references: [id])
+  students     Student[]
+  demoRequests DemoRequest[]
+  courses      Course[]
+  batches      Batch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([tierId])
+}
+
+model GradeTier {
+  id              String @id @default(uuid())
+  name            String @unique
+  creditsPerClass Int           // Legacy fallback
+  credits60Min    Int    @default(0)
+  credits90Min    Int    @default(0)
+  credits120Min   Int    @default(0)
+  minGrade        Int
+  maxGrade        Int
+
+  gradeLevels GradeLevel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// M5: AVAILABILITY & SCHEDULING
+// ============================================
+
+model AvailabilityTemplate {
+  id        String @id @default(uuid())
+  tutorId   String
+  dayOfWeek Int    // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime String // "HH:mm" in 24hr format
+  endTime   String // "HH:mm" in 24hr format
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tutorId, dayOfWeek, startTime, endTime])
+  @@index([tutorId])
+  @@index([dayOfWeek])
+}
+
+model BlockedDate {
+  id      String   @id @default(uuid())
+  tutorId String
+  date    DateTime @db.Date
+  reason  String?
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tutorId, date])
+  @@index([tutorId])
+}
+
+// ============================================
+// M4: BOARD (Reference table)
+// ============================================
+
+model Board {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  isActive Boolean @default(true)
+
+  demoRequests DemoRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+// ============================================
+// M6: DEMO REQUEST
+// ============================================
+
+model DemoRequest {
+  id         String  @id @default(uuid())
+  parentId   String?
+  parentName String  // Stores name from public form (no account needed)
+
+  // Contact info
+  contactEmail String
+  contactPhone String
+
+  // Child info as text (admin creates child profile later)
+  childFirstName   String
+  childLastName    String
+  childDateOfBirth DateTime?
+
+  // References
+  boardId String
+  gradeId String
+
+  // Scheduling
+  preferredTimeSlot TimeSlotPreference
+  preferredDate     DateTime           @db.Date
+  alternativeDate   DateTime?          @db.Date
+
+  // Notes
+  notes String?
+
+  // Status & assignment
+  status       DemoRequestStatus  @default(PENDING)
+  consultantId String?
+
+  // Relations
+  parent      ParentProfile?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  board       Board              @relation(fields: [boardId], references: [id])
+  grade       GradeLevel         @relation(fields: [gradeId], references: [id])
+  consultant  ConsultantProfile? @relation(fields: [consultantId], references: [id])
+  subjects    DemoRequestSubject[]
+  demoBooking DemoBooking?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([status])
+  @@index([consultantId])
+  @@index([createdAt])
+  @@index([contactEmail])
+}
+
+model DemoRequestSubject {
+  id            String @id @default(uuid())
+  demoRequestId String
+  subjectId     String
+
+  demoRequest DemoRequest @relation(fields: [demoRequestId], references: [id], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [id])
+
+  @@unique([demoRequestId, subjectId])
+}
+
+// ============================================
+// M4: COURSE & COURSE MATERIALS
+// ============================================
+
+model Course {
+  id          String    @id @default(uuid())
+  subjectId   String
+  gradeId     String
+  name        String    // e.g., "Mathematics — Grade 10"
+  description String?
+  isActive    Boolean   @default(true)
+
+  subject   Subject    @relation(fields: [subjectId], references: [id])
+  grade     GradeLevel @relation(fields: [gradeId], references: [id])
+  tutors    TutorCourse[]
+  materials CourseMaterial[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([subjectId, gradeId])
+  @@index([subjectId])
+  @@index([gradeId])
+  @@index([isActive])
+}
+
+model TutorCourse {
+  id        String @id @default(uuid())
+  tutorId   String
+  courseId   String
+  tutorRate Int    // Tutor's earning rate in paise per class (1 INR = 100 paise)
+
+  tutor  TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tutorId, courseId])
+  @@index([tutorId])
+  @@index([courseId])
+}
+
+model CourseMaterial {
+  id         String @id @default(uuid())
+  courseId    String
+  title      String
+  fileUrl    String
+  fileType   String // pdf, docx, etc.
+  fileSizeKb Int?
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+}
+
+// ============================================
+// M8: CREDIT WALLET SYSTEM
+// ============================================
+
+enum CreditTransactionType {
+  PURCHASE
+  DEDUCTION
+  ADMIN_ADJUSTMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model CreditPackage {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  credits   Int
+  priceInFils Int   // 1 AED = 100 fils
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  payments  Payment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([isActive])
+}
+
+model CreditTransaction {
+  id             String                @id @default(uuid())
+  parentId       String
+  type           CreditTransactionType
+  amount         Int                   // Positive always — direction determined by type
+  description          String?
+  enrollmentSessionId      String?               @unique
+  paymentId                String?               @unique
+  batchSessionCreditId     String?               @unique
+
+  parent               ParentProfile        @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  enrollmentSession    EnrollmentSession?   @relation(fields: [enrollmentSessionId], references: [id])
+  payment              Payment?             @relation(fields: [paymentId], references: [id])
+  batchSessionCredit   BatchSessionCredit?  @relation(fields: [batchSessionCreditId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  // Immutable ledger — no updatedAt, no deletedAt
+
+  @@index([parentId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================
+// M6: DEMO BOOKING (Scheduled demo class)
+// ============================================
+
+model DemoBooking {
+  id            String  @id @default(uuid())
+  demoRequestId String? @unique
+  studentId     String?
+  tutorId       String
+  consultantId  String
+  subjectId     String
+  status        DemoBookingStatus @default(PENDING)
+
+  // Scheduling (V1: manual, no slot system)
+  scheduledDate  DateTime @db.Date
+  scheduledStart String   // "HH:mm" in 24hr format
+  scheduledEnd   String   // "HH:mm" in 24hr format
+
+  // Meeting
+  meetingLink     String?
+  meetingPassword String?
+  zoomMeetingId   BigInt?
+
+  // Notes
+  parentNotes     String?
+  consultantNotes String?
+
+  // Relations
+  demoRequest DemoRequest?      @relation(fields: [demoRequestId], references: [id])
+  student     Student?          @relation(fields: [studentId], references: [id])
+  tutor       TutorProfile      @relation(fields: [tutorId], references: [id])
+  consultant  ConsultantProfile @relation(fields: [consultantId], references: [id])
+  subject     Subject           @relation(fields: [subjectId], references: [id])
+  recording   Recording?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tutorId])
+  @@index([consultantId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+// ============================================
+// M7: ENROLLMENT (Recurring paid classes)
+// ============================================
+
+model Enrollment {
+  id               String           @id @default(uuid())
+  studentId        String
+  parentId         String
+  subjectId        String
+  tutorId          String
+  status           EnrollmentStatus @default(ACTIVE)
+  classType        ClassType        @default(ONE_TO_ONE)
+
+  // Schedule: JSON array of { dayOfWeek: number, startTime: "HH:mm" }
+  schedule         Json             // e.g. [{ dayOfWeek: 1, startTime: "16:00" }, { dayOfWeek: 3, startTime: "17:00" }]
+  duration         Int              // Duration in minutes (60, 90, or 120)
+
+  // Meeting (one Zoom link per enrollment)
+  zoomLink         String?
+  zoomPassword     String?
+  zoomMeetingId    BigInt?
+
+  // Timezone snapshot (immutable — taken from parent at enrollment creation)
+  timezone         String           @default("Asia/Dubai")
+
+  // Credits
+  creditsPerSession Int             // Snapshot from GradeTier at enrollment time
+
+  // Rolling session generation tracking
+  lastGeneratedDate DateTime?       // Last date for which sessions were generated
+
+  // Pause / cancel
+  pauseReason      String?
+  cancelReason     String?
+  lastPausedAt     DateTime?
+  lastResumedAt    DateTime?
+  pauseCountMonth  Int          @default(0)  // Pauses used this calendar month
+  pauseCountResetAt DateTime?                // When pauseCountMonth was last reset
+
+  // Relations
+  student          Student          @relation(fields: [studentId], references: [id])
+  parent           ParentProfile    @relation(fields: [parentId], references: [id])
+  subject          Subject          @relation(fields: [subjectId], references: [id])
+  tutor            TutorProfile     @relation(fields: [tutorId], references: [id])
+  sessions         EnrollmentSession[]
+  assessmentResults AssessmentResult[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([status])
+}
+
+model EnrollmentSession {
+  id               String        @id @default(uuid())
+  enrollmentId     String
+  status           SessionStatus @default(SCHEDULED)
+
+  // Schedule
+  scheduledDate    DateTime      @db.Date
+  scheduledStart   String        // "HH:mm"
+  scheduledEnd     String        // "HH:mm"
+
+  // Credit deduction
+  creditsCharged   Int
+  creditDeductedAt DateTime?     // When credits were actually deducted
+
+  // Cancellation
+  cancelledAt      DateTime?
+  cancelReason     String?
+
+  // Relations
+  enrollment       Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  creditTransaction CreditTransaction?
+  recording        Recording?
+
+  // M15, M16: Post-booking
+  review           Review?
+  tutorEarning     TutorEarning?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([enrollmentId, scheduledDate, scheduledStart])
+  @@index([enrollmentId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+// ============================================
+// M9: STRIPE PAYMENTS
+// ============================================
+
+model Payment {
+  id                    String        @id @default(uuid())
+  parentId              String
+  creditPackageId       String
+  stripeSessionId       String        @unique
+  stripePaymentIntentId String?       @unique
+  amountInFils          Int           // Snapshot of package price at purchase time
+  credits               Int           // Snapshot of credits at purchase time
+  currency              String        @default("aed")
+  status                PaymentStatus @default(PENDING)
+  failureReason         String?
+  completedAt           DateTime?
+
+  parent            ParentProfile      @relation(fields: [parentId], references: [id])
+  creditPackage     CreditPackage      @relation(fields: [creditPackageId], references: [id])
+  creditTransaction CreditTransaction?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// M10: RECORDINGS (Zoom Cloud → AWS S3)
+// ============================================
+
+enum RecordingStatus {
+  PENDING
+  PROCESSING
+  AVAILABLE
+  FAILED
+}
+
+enum RecordingFileType {
+  VIDEO
+  AUDIO
+  CHAT
+  TRANSCRIPT
+}
+
+model Recording {
+  id                    String          @id @default(uuid())
+  enrollmentSessionId   String?         @unique
+  demoBookingId         String?         @unique
+  zoomMeetingId         BigInt
+  zoomMeetingUuid       String          @unique  // Idempotency: one recording per meeting instance
+  meetingTopic          String?
+  meetingDuration       Int?            // minutes
+  status                RecordingStatus @default(PENDING)
+  title                 String?         // e.g. "Mathematics — Algebra Basics"
+  description           String?         // What was covered in the session
+  thumbnailUrl          String?         // Placeholder for future thumbnail
+  webhookEventId        String?         @unique
+  readyForZoomDeletion  DateTime?       // Set to now()+2hrs when all files AVAILABLE
+  zoomDeletedAt         DateTime?       // When actually deleted from Zoom
+
+  batchSessionId        String?         @unique
+  enrollmentSession     EnrollmentSession? @relation(fields: [enrollmentSessionId], references: [id])
+  demoBooking           DemoBooking?       @relation(fields: [demoBookingId], references: [id])
+  batchSession          BatchSession?      @relation(fields: [batchSessionId], references: [id])
+  files                 RecordingFile[]
+
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([zoomMeetingId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RecordingFile {
+  id                  String            @id @default(uuid())
+  recordingId         String
+  zoomFileId          String            @unique  // Idempotency: one row per Zoom file
+  fileType            RecordingFileType
+  fileExtension       String            // "MP4", "M4A", "TXT", "VTT"
+  recordingType       String            // "shared_screen_with_speaker_view", "audio_only", etc.
+  fileSizeBytes       BigInt
+  durationSeconds     Int?
+  zoomDownloadUrl     String
+  s3Key               String?
+  s3Bucket            String?
+  status              RecordingStatus   @default(PENDING)
+  retryCount          Int               @default(0)
+  lastError           String?
+  processingStartedAt DateTime?         // Tracks when upload started (stale detection)
+  completedAt         DateTime?
+
+  recording           Recording         @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([recordingId])
+  @@index([status, retryCount])
+}
+
+// ============================================
+// M7 V2: BATCH / GROUP CLASSES
+// ============================================
+
+model Batch {
+  id              String      @id @default(uuid())
+  name            String      // e.g. "Grade 10 Mathematics - Batch A"
+  description     String?
+  subjectId       String
+  tutorId         String
+  gradeId         String
+  status          BatchStatus @default(OPEN)
+
+  // Schedule: same JSON format as Enrollment
+  schedule        Json        // [{ dayOfWeek: 1, startTime: "16:00" }]
+  duration        Int         // 60, 90, or 120 minutes
+
+  // Student limits
+  minStudents     Int         @default(1)
+  maxStudents     Int         @default(6)
+
+  // Credits (group rate — set by admin, typically lower than 1:1)
+  creditsPerSession Int
+
+  // Zoom (one shared link for the batch)
+  zoomLink        String?
+  zoomPassword    String?
+  zoomMeetingId   BigInt?
+
+  // Dates
+  startDate       DateTime?   @db.Date
+  lastGeneratedDate DateTime?
+
+  // Relations
+  subject         Subject      @relation(fields: [subjectId], references: [id])
+  tutor           TutorProfile @relation(fields: [tutorId], references: [id])
+  grade           GradeLevel   @relation(fields: [gradeId], references: [id])
+  students        BatchStudent[]
+  sessions        BatchSession[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status])
+  @@index([subjectId])
+  @@index([tutorId])
+  @@index([gradeId])
+}
+
+model BatchStudent {
+  id          String    @id @default(uuid())
+  batchId     String
+  studentId   String
+  parentId    String
+  isActive    Boolean   @default(true)
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  leaveReason String?
+
+  batch       Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student     Student        @relation(fields: [studentId], references: [id])
+  parent      ParentProfile  @relation(fields: [parentId], references: [id])
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([parentId])
+}
+
+model BatchSession {
+  id              String        @id @default(uuid())
+  batchId         String
+  status          SessionStatus @default(SCHEDULED)
+
+  scheduledDate   DateTime      @db.Date
+  scheduledStart  String        // "HH:mm"
+  scheduledEnd    String        // "HH:mm"
+
+  cancelledAt     DateTime?
+  cancelReason    String?
+
+  batch           Batch         @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  creditDeductions BatchSessionCredit[]
+  recording       Recording?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([batchId, scheduledDate, scheduledStart])
+  @@index([batchId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model BatchSessionCredit {
+  id               String         @id @default(uuid())
+  batchSessionId   String
+  parentId         String
+  studentId        String
+  creditsCharged   Int
+  creditDeductedAt DateTime?
+
+  batchSession      BatchSession      @relation(fields: [batchSessionId], references: [id], onDelete: Cascade)
+  creditTransaction CreditTransaction?
+
+  @@unique([batchSessionId, studentId])
+  @@index([batchSessionId])
+  @@index([parentId])
+}
+
+// ============================================
+// M11: ASSESSMENT RESULTS & PROGRESS
+// ============================================
+
+model AssessmentResult {
+  id           String    @id @default(uuid())
+  studentId    String
+  tutorId      String
+  subjectId    String
+  enrollmentId String?   // Optional link to enrollment
+  title        String    // e.g. "Unit 3 Math Test"
+  score        Float     // Score obtained
+  maxScore     Float     @default(100) // Maximum possible score
+  percentage   Float     // Computed: (score / maxScore) * 100
+  remarks      String?   // Tutor's feedback/notes
+  assessedAt   DateTime  // Date the assessment was taken (offline)
+
+  // Relations
+  student    Student       @relation(fields: [studentId], references: [id])
+  tutor      TutorProfile  @relation(fields: [tutorId], references: [id])
+  subject    Subject       @relation(fields: [subjectId], references: [id])
+  enrollment Enrollment?   @relation(fields: [enrollmentId], references: [id])
+  documents  AssessmentDocument[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([subjectId])
+  @@index([enrollmentId])
+  @@index([assessedAt])
+  @@index([createdAt])
+}
+
+model AssessmentDocument {
+  id                 String @id @default(uuid())
+  assessmentResultId String
+  title              String
+  fileUrl            String // S3 key
+  fileType           String // pdf, jpg, png, etc.
+  fileSizeKb         Int?
+
+  assessmentResult AssessmentResult @relation(fields: [assessmentResultId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([assessmentResultId])
+}
+
+// ============================================
+// M15: RATING & REVIEW
+// ============================================
+
+model Review {
+  id        String  @id @default(uuid())
+  bookingId String  @unique // One review per completed EnrollmentSession
+  tutorId   String
+  parentId  String
+  rating    Int     // 1-5 stars
+  comment   String? // Optional text review
+  isVisible Boolean @default(true) // Admin can hide inappropriate reviews
+
+  // Relations
+  booking EnrollmentSession @relation(fields: [bookingId], references: [id])
+  tutor   TutorProfile      @relation(fields: [tutorId], references: [id])
+  parent  ParentProfile     @relation(fields: [parentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tutorId])
+  @@index([parentId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+// ============================================
+// M16: TUTOR EARNINGS & PAYOUTS
+// ============================================
+
+model TutorEarning {
+  id           String        @id @default(uuid())
+  tutorId      String
+  bookingId    String        @unique // One earning per completed EnrollmentSession
+  amountInPaise Int          // Tutor's earning in paise (1 INR = 100 paise, from TutorCourse.tutorRate)
+  status       EarningStatus @default(UNPAID)
+  paidAt       DateTime?     // When admin marked as paid
+
+  // Relations
+  tutor   TutorProfile      @relation(fields: [tutorId], references: [id])
+  booking EnrollmentSession @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tutorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PayoutRecord {
+  id                String   @id @default(uuid())
+  tutorId           String
+  totalAmountInPaise Int     // Total payout amount in paise (INR)
+  earningIds        String[] // Array of TutorEarning IDs included in this payout
+  notes             String?  // Admin notes
+  paidVia           String?  // "Bank Transfer", "Cash", etc.
+  referenceNo       String?  // Bank transfer reference number
+
+  // Relations
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
+  @@index([createdAt])
+}
+
+// ============================================
+// M12: NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  emailSent Boolean          @default(false)
+  metadata  Json?
+
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
