@@ -1,7 +1,14 @@
 import { TokenType } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import prisma from '../../config/database';
 import { ApiError } from '../../shared/utils/apiError';
 import { parsePagination, buildPaginationMeta } from '../../shared/utils/pagination';
+import {
+  generatePresignedUploadUrl,
+  validateUploadClaim,
+  getMimeType,
+  type UploadCategory,
+} from '../../shared/utils/s3Upload';
 import {
   UpdateTutorProfileDTO,
   CreateCertificationDTO,
@@ -271,6 +278,57 @@ export class TutorService {
         documentUrl: data.documentUrl,
       },
     });
+  }
+
+  // ==========================================
+  // M3: PRESIGNED UPLOAD URLS
+  // (browser uploads directly to S3 — backend never sees the file)
+  // ==========================================
+
+  /**
+   * Generate a presigned URL for uploading a tutor's profile photo.
+   * After upload, frontend should call PATCH /tutors/profile with profilePhotoUrl = fileKey.
+   */
+  async requestProfilePhotoUploadUrl(userId: string, fileType: string, fileSizeKb: number) {
+    const profile = await this.getProfileByUserId(userId);
+    return this.buildPresignedUpload('profile-photo', `profile-photos/${profile.id}`, fileType, fileSizeKb);
+  }
+
+  /**
+   * Generate a presigned URL for uploading a tutor's intro video.
+   * After upload, frontend should call PATCH /tutors/profile with introVideoUrl = fileKey.
+   */
+  async requestIntroVideoUploadUrl(userId: string, fileType: string, fileSizeKb: number) {
+    const profile = await this.getProfileByUserId(userId);
+    return this.buildPresignedUpload('intro-video', `intro-videos/${profile.id}`, fileType, fileSizeKb);
+  }
+
+  /**
+   * Generate a presigned URL for uploading a tutor's certification document.
+   * After upload, frontend should call POST /tutors/certifications with documentUrl = fileKey.
+   */
+  async requestCertificationUploadUrl(userId: string, fileType: string, fileSizeKb: number) {
+    const profile = await this.getProfileByUserId(userId);
+    return this.buildPresignedUpload('certification', `certifications/${profile.id}`, fileType, fileSizeKb);
+  }
+
+  /**
+   * Internal helper: validate the claim, generate a unique key, sign the URL.
+   */
+  private async buildPresignedUpload(
+    category: UploadCategory,
+    keyPrefix: string,
+    fileType: string,
+    fileSizeKb: number
+  ) {
+    validateUploadClaim(category, fileType, fileSizeKb);
+
+    const ext = fileType.toLowerCase();
+    const fileKey = `${keyPrefix}/${uuidv4()}.${ext}`;
+    const contentType = getMimeType(category, ext);
+    const uploadUrl = await generatePresignedUploadUrl(fileKey, contentType);
+
+    return { uploadUrl, fileKey, contentType };
   }
 
   async deleteCertification(userId: string, certId: string) {

@@ -99,6 +99,49 @@ export class TutorController {
   }
 
   // ==========================================
+  // PRESIGNED UPLOAD URL ENDPOINTS
+  // ==========================================
+
+  async requestProfilePhotoUploadUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await service.requestProfilePhotoUploadUrl(
+        req.user!.id,
+        req.body.fileType,
+        req.body.fileSizeKb
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async requestIntroVideoUploadUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await service.requestIntroVideoUploadUrl(
+        req.user!.id,
+        req.body.fileType,
+        req.body.fileSizeKb
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async requestCertificationUploadUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await service.requestCertificationUploadUrl(
+        req.user!.id,
+        req.body.fileType,
+        req.body.fileSizeKb
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ==========================================
   // M3: ADMIN TUTOR MANAGEMENT
   // ==========================================
 

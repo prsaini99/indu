@@ -121,6 +121,37 @@ export class CourseController {
   }
 
   // ==========================================
+  // PRESIGNED UPLOAD URL FOR COURSE MATERIALS
+  // ==========================================
+
+  async tutorRequestMaterialUploadUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await service.tutorRequestMaterialUploadUrl(
+        req.user!.id,
+        req.params.id as string,
+        req.body.fileType,
+        req.body.fileSizeKb
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async adminRequestMaterialUploadUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await service.adminRequestMaterialUploadUrl(
+        req.params.id as string,
+        req.body.fileType,
+        req.body.fileSizeKb
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ==========================================
   // ADMIN: GRADE TIERS
   // ==========================================
 

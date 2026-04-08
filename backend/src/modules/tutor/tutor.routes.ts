@@ -20,6 +20,7 @@ import {
   createBlockedDateSchema,
   availabilityQuerySchema,
   tutorSearchQuerySchema,
+  requestUploadUrlSchema,
 } from './tutor.validators';
 
 const router = Router();
@@ -83,6 +84,35 @@ router.delete(
   requireRole(Role.TUTOR),
   validate({ params: certIdParam }),
   controller.deleteCertification
+);
+
+// ==========================================
+// PRESIGNED UPLOAD URL ENDPOINTS
+// (browser → backend → presigned PUT URL → browser → S3)
+// ==========================================
+
+router.post(
+  '/tutors/profile/photo-upload-url',
+  authenticate,
+  requireRole(Role.TUTOR),
+  validate({ body: requestUploadUrlSchema }),
+  controller.requestProfilePhotoUploadUrl
+);
+
+router.post(
+  '/tutors/profile/intro-video-upload-url',
+  authenticate,
+  requireRole(Role.TUTOR),
+  validate({ body: requestUploadUrlSchema }),
+  controller.requestIntroVideoUploadUrl
+);
+
+router.post(
+  '/tutors/certifications/upload-url',
+  authenticate,
+  requireRole(Role.TUTOR),
+  validate({ body: requestUploadUrlSchema }),
+  controller.requestCertificationUploadUrl
 );
 
 // ==========================================

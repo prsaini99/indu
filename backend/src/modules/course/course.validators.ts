@@ -46,6 +46,11 @@ export const createCourseMaterialSchema = z.object({
   fileSizeKb: z.number().int().positive().optional(),
 });
 
+export const requestMaterialUploadSchema = z.object({
+  fileType: z.string().min(1).max(10),
+  fileSizeKb: z.number().int().min(1),
+});
+
 export const updateGradeTierSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   creditsPerClass: z.number().int().min(1).optional(),

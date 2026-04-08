@@ -1,9 +1,10 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import prisma from '../../config/database';
 import { ApiError } from '../../shared/utils/apiError';
 import { parsePagination, buildPaginationMeta } from '../../shared/utils/pagination';
 import { s3Client, s3Bucket, isS3Configured } from '../../config/s3';
+import { generatePresignedUploadUrl, getMimeType } from '../../shared/utils/s3Upload';
 import {
   CreateAssessmentResultDTO,
   UpdateAssessmentResultDTO,
@@ -352,12 +353,10 @@ export class AssessmentService {
     // Generate pre-signed PUT URL if S3 is configured
     let uploadUrl: string | null = null;
     if (isS3Configured && s3Client) {
-      const command = new PutObjectCommand({
-        Bucket: s3Bucket,
-        Key: fileKey,
-        ContentType: `application/${data.fileType}`,
-      });
-      uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+      uploadUrl = await generatePresignedUploadUrl(
+        fileKey,
+        getMimeType('assessment', data.fileType)
+      );
     }
 
     return {

@@ -48,6 +48,16 @@ export const createCertificationSchema = z.object({
 });
 
 // ==========================================
+// M3: UPLOAD URL REQUEST SCHEMAS
+// (browser → backend → presigned PUT URL → browser → S3)
+// ==========================================
+
+export const requestUploadUrlSchema = z.object({
+  fileType: z.string().min(1).max(10),
+  fileSizeKb: z.number().int().min(1),
+});
+
+// ==========================================
 // M3: ADMIN TUTOR MANAGEMENT
 // ==========================================
 

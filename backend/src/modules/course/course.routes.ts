@@ -16,6 +16,7 @@ import {
   createCourseMaterialSchema,
   updateGradeTierSchema,
   assignTutorToCourseSchema,
+  requestMaterialUploadSchema,
 } from './course.validators';
 
 const router = Router();
@@ -62,6 +63,14 @@ router.delete(
   requireRole(Role.TUTOR),
   validate({ params: materialIdParam }),
   controller.tutorRemoveMaterial
+);
+
+router.post(
+  '/tutors/courses/:id/materials/upload-url',
+  authenticate,
+  requireRole(Role.TUTOR),
+  validate({ params: courseIdParam, body: requestMaterialUploadSchema }),
+  controller.tutorRequestMaterialUploadUrl
 );
 
 // ==========================================
@@ -149,6 +158,15 @@ router.delete(
   requirePermission(Permission.COURSE_MANAGEMENT),
   validate({ params: materialIdParam }),
   controller.removeMaterial
+);
+
+router.post(
+  '/admin/courses/:id/materials/upload-url',
+  authenticate,
+  requireRole(Role.SUPER_ADMIN, Role.ADMIN),
+  requirePermission(Permission.COURSE_MANAGEMENT),
+  validate({ params: courseIdParam, body: requestMaterialUploadSchema }),
+  controller.adminRequestMaterialUploadUrl
 );
 
 // ==========================================

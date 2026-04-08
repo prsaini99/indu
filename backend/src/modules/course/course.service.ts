@@ -1,6 +1,12 @@
+import { v4 as uuidv4 } from 'uuid';
 import prisma from '../../config/database';
 import { ApiError } from '../../shared/utils/apiError';
 import { parsePagination, buildPaginationMeta } from '../../shared/utils/pagination';
+import {
+  generatePresignedUploadUrl,
+  validateUploadClaim,
+  getMimeType,
+} from '../../shared/utils/s3Upload';
 import {
   CreateCourseDTO,
   UpdateCourseDTO,
@@ -353,6 +359,58 @@ export class CourseService {
 
     await prisma.courseMaterial.delete({ where: { id: materialId } });
     return { message: 'Material removed' };
+  }
+
+  // ==========================================
+  // PRESIGNED UPLOAD URL FOR COURSE MATERIALS
+  // ==========================================
+
+  /**
+   * Tutor variant: verifies the tutor is assigned to the course before issuing a URL.
+   * After upload, frontend should call POST /tutors/courses/:id/materials with fileUrl = fileKey.
+   */
+  async tutorRequestMaterialUploadUrl(
+    userId: string,
+    courseId: string,
+    fileType: string,
+    fileSizeKb: number
+  ) {
+    const tutor = await prisma.tutorProfile.findUnique({ where: { userId } });
+    if (!tutor) throw ApiError.notFound('Tutor profile not found');
+
+    const assignment = await prisma.tutorCourse.findUnique({
+      where: { tutorId_courseId: { tutorId: tutor.id, courseId } },
+    });
+    if (!assignment) throw ApiError.forbidden('You are not assigned to this course');
+
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course || course.deletedAt) throw ApiError.notFound('Course not found');
+
+    return this.buildMaterialUpload(courseId, fileType, fileSizeKb);
+  }
+
+  /**
+   * Admin variant: any admin with COURSE_MANAGEMENT permission can upload materials to any course.
+   */
+  async adminRequestMaterialUploadUrl(courseId: string, fileType: string, fileSizeKb: number) {
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course || course.deletedAt) throw ApiError.notFound('Course not found');
+
+    return this.buildMaterialUpload(courseId, fileType, fileSizeKb);
+  }
+
+  /**
+   * Internal helper: validate, build a unique key, sign the URL.
+   */
+  private async buildMaterialUpload(courseId: string, fileType: string, fileSizeKb: number) {
+    validateUploadClaim('course-material', fileType, fileSizeKb);
+
+    const ext = fileType.toLowerCase();
+    const fileKey = `course-materials/${courseId}/${uuidv4()}.${ext}`;
+    const contentType = getMimeType('course-material', ext);
+    const uploadUrl = await generatePresignedUploadUrl(fileKey, contentType);
+
+    return { uploadUrl, fileKey, contentType };
   }
 
   // ==========================================
