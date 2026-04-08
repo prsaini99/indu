@@ -233,4 +233,181 @@ describe('M3: Tutor Management', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  // ==========================================
+  // PRESIGNED UPLOAD URL ENDPOINTS
+  // ==========================================
+  describe('Presigned Upload URLs', () => {
+    // ----- Profile Photo Upload -----
+    describe('POST /tutors/profile/photo-upload-url', () => {
+      it('should return presigned URL for valid jpg', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/photo-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'jpg', fileSizeKb: 200 });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.uploadUrl).toMatch(/^https:\/\//);
+        expect(res.body.data.fileKey).toMatch(/^profile-photos\/.+\.jpg$/);
+        expect(res.body.data.contentType).toBe('image/jpeg');
+      });
+
+      it('should accept png, webp', async () => {
+        for (const ext of ['png', 'webp']) {
+          const res = await request
+            .post(`${API}/tutors/profile/photo-upload-url`)
+            .set('Authorization', `Bearer ${tutorToken}`)
+            .send({ fileType: ext, fileSizeKb: 200 });
+          expect(res.status).toBe(200);
+        }
+      });
+
+      it('should reject pdf as profile photo (INVALID_FILE_TYPE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/photo-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'pdf', fileSizeKb: 200 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('INVALID_FILE_TYPE');
+      });
+
+      it('should reject file > 5 MB (FILE_TOO_LARGE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/photo-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'jpg', fileSizeKb: 6 * 1024 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('FILE_TOO_LARGE');
+      });
+
+      it('should reject missing fileType (validator)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/photo-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileSizeKb: 200 });
+
+        expect(res.status).toBe(400);
+      });
+
+      it('should reject non-tutor role (403)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/photo-upload-url`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ fileType: 'jpg', fileSizeKb: 200 });
+
+        expect(res.status).toBe(403);
+      });
+    });
+
+    // ----- Intro Video Upload -----
+    describe('POST /tutors/profile/intro-video-upload-url', () => {
+      it('should return presigned URL for valid mp4', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/intro-video-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'mp4', fileSizeKb: 50 * 1024 });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.uploadUrl).toMatch(/^https:\/\//);
+        expect(res.body.data.fileKey).toMatch(/^intro-videos\/.+\.mp4$/);
+        expect(res.body.data.contentType).toBe('video/mp4');
+      });
+
+      it('should accept webm and mov', async () => {
+        for (const ext of ['webm', 'mov']) {
+          const res = await request
+            .post(`${API}/tutors/profile/intro-video-upload-url`)
+            .set('Authorization', `Bearer ${tutorToken}`)
+            .send({ fileType: ext, fileSizeKb: 1024 });
+          expect(res.status).toBe(200);
+        }
+      });
+
+      it('should reject jpg for intro video (INVALID_FILE_TYPE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/intro-video-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'jpg', fileSizeKb: 200 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('INVALID_FILE_TYPE');
+      });
+
+      it('should reject file > 100 MB (FILE_TOO_LARGE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/intro-video-upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'mp4', fileSizeKb: 101 * 1024 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('FILE_TOO_LARGE');
+      });
+
+      it('should reject non-tutor role (403)', async () => {
+        const res = await request
+          .post(`${API}/tutors/profile/intro-video-upload-url`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ fileType: 'mp4', fileSizeKb: 1024 });
+
+        expect(res.status).toBe(403);
+      });
+    });
+
+    // ----- Certification Upload -----
+    describe('POST /tutors/certifications/upload-url', () => {
+      it('should return presigned URL for valid pdf', async () => {
+        const res = await request
+          .post(`${API}/tutors/certifications/upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'pdf', fileSizeKb: 500 });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.uploadUrl).toMatch(/^https:\/\//);
+        expect(res.body.data.fileKey).toMatch(/^certifications\/.+\.pdf$/);
+        expect(res.body.data.contentType).toBe('application/pdf');
+      });
+
+      it('should accept jpg/png certifications too', async () => {
+        for (const ext of ['jpg', 'png']) {
+          const res = await request
+            .post(`${API}/tutors/certifications/upload-url`)
+            .set('Authorization', `Bearer ${tutorToken}`)
+            .send({ fileType: ext, fileSizeKb: 500 });
+          expect(res.status).toBe(200);
+        }
+      });
+
+      it('should reject docx certification (INVALID_FILE_TYPE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/certifications/upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'docx', fileSizeKb: 500 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('INVALID_FILE_TYPE');
+      });
+
+      it('should reject file > 10 MB (FILE_TOO_LARGE)', async () => {
+        const res = await request
+          .post(`${API}/tutors/certifications/upload-url`)
+          .set('Authorization', `Bearer ${tutorToken}`)
+          .send({ fileType: 'pdf', fileSizeKb: 11 * 1024 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe('FILE_TOO_LARGE');
+      });
+
+      it('should reject non-tutor role (403)', async () => {
+        const res = await request
+          .post(`${API}/tutors/certifications/upload-url`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ fileType: 'pdf', fileSizeKb: 500 });
+
+        expect(res.status).toBe(403);
+      });
+    });
+  });
 });

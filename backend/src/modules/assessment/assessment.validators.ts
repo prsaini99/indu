@@ -52,6 +52,5 @@ export const progressQuerySchema = z.object({
 export const uploadDocumentSchema = z.object({
   title: z.string().min(1).max(200),
   fileType: z.string().min(1).max(20),
-  fileUrl: z.string().url(),
   fileSizeKb: z.number().int().min(1).max(51200).optional(), // Max 50 MB
 });
