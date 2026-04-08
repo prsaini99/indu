@@ -5,7 +5,7 @@ const isConfigured = !!(
   env.AWS_ACCESS_KEY_ID &&
   env.AWS_SECRET_ACCESS_KEY &&
   env.AWS_REGION &&
-  env.AWS_S3_RECORDINGS_BUCKET
+  env.AWS_S3_BUCKET
 );
 
 if (!isConfigured) {
@@ -22,5 +22,5 @@ export const s3Client = isConfigured
     })
   : null;
 
-export const s3Bucket = env.AWS_S3_RECORDINGS_BUCKET || '';
+export const s3Bucket = env.AWS_S3_BUCKET || '';
 export const isS3Configured = isConfigured;
