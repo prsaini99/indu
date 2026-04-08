@@ -26,7 +26,7 @@ class ApplicationController {
   // Admin: get single application
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await applicationService.getById(req.params.id);
+      const result = await applicationService.getById(req.params.id as string);
       sendSuccess(res, result);
     } catch (error) {
       next(error);
@@ -36,7 +36,7 @@ class ApplicationController {
   // Admin: review (approve/reject)
   async review(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await applicationService.review(req.params.id, req.user!.id, req.body);
+      const result = await applicationService.review(req.params.id as string, req.user!.id, req.body);
       sendSuccess(res, result);
     } catch (error) {
       next(error);

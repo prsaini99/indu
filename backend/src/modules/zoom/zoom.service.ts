@@ -6,6 +6,12 @@ interface ZoomTokenResponse {
   expires_in: number;
 }
 
+interface ZoomMeetingResponse {
+  id: number | string;
+  join_url: string;
+  password?: string;
+}
+
 interface ZoomMeetingResult {
   meetingId: bigint;
   joinUrl: string;
@@ -54,7 +60,7 @@ export class ZoomService {
       throw new Error(`Zoom OAuth failed (${response.status}): ${text}`);
     }
 
-    const data: ZoomTokenResponse = await response.json();
+    const data = (await response.json()) as ZoomTokenResponse;
     cachedToken = data.access_token;
     tokenExpiresAt = Date.now() + data.expires_in * 1000;
 
@@ -97,7 +103,7 @@ export class ZoomService {
       throw new Error(`Zoom create meeting failed (${response.status}): ${text}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ZoomMeetingResponse;
 
     return {
       meetingId: BigInt(data.id),
@@ -144,7 +150,7 @@ export class ZoomService {
       throw new Error(`Zoom create meeting failed (${response.status}): ${text}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ZoomMeetingResponse;
 
     return {
       meetingId: BigInt(data.id),

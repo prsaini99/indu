@@ -111,7 +111,7 @@ export class RecordingController {
   // Admin: Retry a failed recording
   async retryRecording(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await service.retryRecording(req.params.id);
+      const result = await service.retryRecording(req.params.id as string);
       sendSuccess(res, result);
     } catch (error) {
       next(error);
