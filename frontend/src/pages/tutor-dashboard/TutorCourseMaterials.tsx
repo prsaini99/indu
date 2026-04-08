@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { tutorCourseService, type Course, type CourseMaterial } from "@/services/course.service";
+import { FileUploadInput } from "@/components/FileUploadInput";
+import { uploadRequestors } from "@/services/upload.service";
 
 const TutorCourseMaterials = () => {
   const { toast } = useToast();
@@ -33,6 +35,7 @@ const TutorCourseMaterials = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [materialForm, setMaterialForm] = useState({ title: "", fileUrl: "", fileType: "pdf" });
   const [materialSaving, setMaterialSaving] = useState(false);
+  const [materialUploadKey, setMaterialUploadKey] = useState(0);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -67,6 +70,7 @@ const TutorCourseMaterials = () => {
       });
       toast({ title: "Material added", description: `"${materialForm.title}" uploaded successfully.` });
       setMaterialForm({ title: "", fileUrl: "", fileType: "pdf" });
+      setMaterialUploadKey((k) => k + 1);
       // Refresh courses to get updated materials
       const updated = await tutorCourseService.listMyCourses();
       setCourses(updated);
@@ -203,37 +207,32 @@ const TutorCourseMaterials = () => {
             {/* Add material */}
             <div className="border-t pt-4">
               <Label className="text-sm font-medium">Add Material</Label>
-              <div className="space-y-2 mt-2">
+              <div className="space-y-3 mt-2">
                 <Input
                   value={materialForm.title}
                   onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
                   placeholder="Title"
                 />
-                <Input
-                  value={materialForm.fileUrl}
-                  onChange={(e) => setMaterialForm({ ...materialForm, fileUrl: e.target.value })}
-                  placeholder="File URL"
-                />
-                <div className="flex gap-2">
-                  <select
-                    value={materialForm.fileType}
-                    onChange={(e) => setMaterialForm({ ...materialForm, fileType: e.target.value })}
-                    className="px-3 py-2 border border-input rounded-md bg-background text-sm flex-1"
-                  >
-                    <option value="pdf">PDF</option>
-                    <option value="docx">DOCX</option>
-                    <option value="pptx">PPTX</option>
-                    <option value="xlsx">XLSX</option>
-                    <option value="mp4">MP4</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <Button
-                    onClick={handleAddMaterial}
-                    disabled={materialSaving || !materialForm.title || !materialForm.fileUrl}
-                  >
-                    {materialSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" /> Add</>}
-                  </Button>
-                </div>
+                {selectedCourse && (
+                  <FileUploadInput
+                    key={materialUploadKey}
+                    accept=".pdf,.docx,.pptx,.xlsx,.mp4"
+                    maxSizeMb={50}
+                    requestSignedUrl={uploadRequestors.tutorCourseMaterial(selectedCourse.id)}
+                    onUploadComplete={(fileKey, file) => {
+                      const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+                      setMaterialForm((f) => ({ ...f, fileUrl: fileKey, fileType: ext }));
+                    }}
+                    helperText="PDF/DOCX/PPTX/XLSX/MP4, max 50 MB"
+                  />
+                )}
+                <Button
+                  onClick={handleAddMaterial}
+                  disabled={materialSaving || !materialForm.title || !materialForm.fileUrl}
+                  className="w-full"
+                >
+                  {materialSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" /> Add Material</>}
+                </Button>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import prisma from '../../config/database';
 import { ApiError } from '../../shared/utils/apiError';
 import { parsePagination, buildPaginationMeta } from '../../shared/utils/pagination';
 import { s3Client, s3Bucket, isS3Configured } from '../../config/s3';
-import { generatePresignedUploadUrl, getMimeType } from '../../shared/utils/s3Upload';
+import { generatePresignedUploadUrl, getMimeType, toDisplayUrl } from '../../shared/utils/s3Upload';
 import {
   CreateAssessmentResultDTO,
   UpdateAssessmentResultDTO,
@@ -230,13 +230,16 @@ export class AssessmentService {
       studentName: `${result.student.firstName} ${result.student.lastName}`,
       tutorName: `${result.tutor.firstName} ${result.tutor.lastName}`,
       subject: result.subject.name,
-      documents: result.documents.map((d) => ({
-        id: d.id,
-        title: d.title,
-        fileType: d.fileType,
-        fileSizeKb: d.fileSizeKb,
-        createdAt: d.createdAt,
-      })),
+      documents: await Promise.all(
+        result.documents.map(async (d) => ({
+          id: d.id,
+          title: d.title,
+          fileType: d.fileType,
+          fileSizeKb: d.fileSizeKb,
+          fileUrl: (await toDisplayUrl(d.fileUrl)) ?? d.fileUrl,
+          createdAt: d.createdAt,
+        }))
+      ),
       createdAt: result.createdAt,
     };
   }

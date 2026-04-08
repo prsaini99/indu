@@ -124,11 +124,13 @@ describe('M3: Tutor Management', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should reject invalid documentUrl', async () => {
+    it('should reject empty documentUrl', async () => {
+      // Validator now accepts both URLs and S3 fileKeys (any non-empty string)
+      // since the presigned-upload pipeline returns fileKeys, not URLs.
       const res = await request
         .post(`${API}/tutors/certifications`)
         .set('Authorization', `Bearer ${tutorToken}`)
-        .send({ title: 'Test', documentUrl: 'not-a-url' });
+        .send({ title: 'Test', documentUrl: '' });
 
       expect(res.status).toBe(400);
     });

@@ -5,6 +5,7 @@ import { parsePagination, buildPaginationMeta } from '../../shared/utils/paginat
 import { convertTime, shiftDay, localToUtc, getUtcOffsetMinutes } from '../../shared/utils/timezone';
 import { computeBalance } from '../../shared/utils/credit';
 import { addMinutesToTime, formatDateUTC } from '../../shared/utils/time';
+import { toDisplayUrl } from '../../shared/utils/s3Upload';
 import {
   CreateEnrollmentDTO,
   EnrollmentQueryDTO,
@@ -1373,9 +1374,16 @@ export class EnrollmentService {
       },
     });
 
+    const materials = await Promise.all(
+      (course?.materials || []).map(async (m) => ({
+        ...m,
+        fileUrl: (await toDisplayUrl(m.fileUrl)) ?? m.fileUrl,
+      }))
+    );
+
     return {
       courseName: course?.name || `${enrollment.subject.name}`,
-      materials: course?.materials || [],
+      materials,
     };
   }
 }

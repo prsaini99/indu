@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import TutorDashboardLayout from "@/components/TutorDashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,14 +36,31 @@ import {
   Loader2,
   Search,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
 import {
   tutorAssessmentService,
   AssessmentResult,
-  CreateAssessmentPayload,
+  AssessmentResultDetail,
   TutorStudent,
 } from "@/services/assessment.service";
+
+// Mirror of backend assessment MIME map (s3Upload.ts) — kept tiny + local
+// since the upload-url endpoint doesn't return contentType.
+const ASSESSMENT_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+};
+const ASSESSMENT_ALLOWED = Object.keys(ASSESSMENT_MIME);
+const ASSESSMENT_MAX_MB = 50;
 
 const TutorAssessments = () => {
   const { toast } = useToast();
@@ -59,6 +76,16 @@ const TutorAssessments = () => {
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
+
+  // Documents dialog
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [docsResult, setDocsResult] = useState<AssessmentResultDetail | null>(null);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docTitle, setDocTitle] = useState("");
+  const [docUploading, setDocUploading] = useState(false);
+  const [docProgress, setDocProgress] = useState(0);
+  const [docError, setDocError] = useState<string | null>(null);
+  const docFileRef = useRef<HTMLInputElement | null>(null);
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -123,6 +150,95 @@ const TutorAssessments = () => {
       toast({ title: "Error", description: "Failed to upload result", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openDocsDialog = async (resultId: string) => {
+    setDocsOpen(true);
+    setDocsLoading(true);
+    setDocsResult(null);
+    setDocTitle("");
+    setDocError(null);
+    try {
+      const detail = await tutorAssessmentService.getById(resultId);
+      setDocsResult(detail);
+    } catch {
+      toast({ title: "Error", description: "Failed to load documents", variant: "destructive" });
+      setDocsOpen(false);
+    } finally {
+      setDocsLoading(false);
+    }
+  };
+
+  const handleDocFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !docsResult) return;
+    setDocError(null);
+
+    if (!docTitle.trim()) {
+      setDocError("Please enter a document title first.");
+      e.target.value = "";
+      return;
+    }
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ASSESSMENT_ALLOWED.includes(ext)) {
+      setDocError(`File type .${ext} not allowed. Allowed: ${ASSESSMENT_ALLOWED.join(", ")}`);
+      e.target.value = "";
+      return;
+    }
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb > ASSESSMENT_MAX_MB) {
+      setDocError(`File too large (${sizeMb.toFixed(1)} MB). Max ${ASSESSMENT_MAX_MB} MB.`);
+      e.target.value = "";
+      return;
+    }
+
+    const fileSizeKb = Math.ceil(file.size / 1024);
+    setDocUploading(true);
+    setDocProgress(0);
+    try {
+      // Step 1: create document row + get signed URL
+      const { uploadUrl } = await tutorAssessmentService.uploadDocument(docsResult.id, {
+        title: docTitle.trim(),
+        fileType: ext,
+        fileSizeKb,
+      });
+      if (!uploadUrl) throw new Error("Backend did not return an upload URL (S3 not configured?)");
+
+      // Step 2: PUT to S3 (bare axios — no auth header)
+      await axios.put(uploadUrl, file, {
+        headers: { "Content-Type": ASSESSMENT_MIME[ext] },
+        onUploadProgress: (evt) => {
+          if (evt.total) setDocProgress(Math.round((evt.loaded / evt.total) * 100));
+        },
+      });
+
+      toast({ title: "Document uploaded", description: docTitle });
+      setDocTitle("");
+      if (docFileRef.current) docFileRef.current.value = "";
+
+      // Refresh documents list
+      const detail = await tutorAssessmentService.getById(docsResult.id);
+      setDocsResult(detail);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || "Upload failed";
+      setDocError(msg);
+    } finally {
+      setDocUploading(false);
+      setDocProgress(0);
+    }
+  };
+
+  const handleDeleteDoc = async (docId: string) => {
+    if (!docsResult) return;
+    try {
+      await tutorAssessmentService.deleteDocument(docsResult.id, docId);
+      toast({ title: "Document removed" });
+      const detail = await tutorAssessmentService.getById(docsResult.id);
+      setDocsResult(detail);
+    } catch {
+      toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
     }
   };
 
@@ -272,14 +388,24 @@ const TutorAssessments = () => {
                         </TableCell>
                         <TableCell>{new Date(r.assessedAt).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDelete(r.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDocsDialog(r.id)}
+                              title="Manage documents"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDelete(r.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -396,6 +522,90 @@ const TutorAssessments = () => {
                 Upload Result
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Documents Dialog */}
+        <Dialog open={docsOpen} onOpenChange={setDocsOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Documents — {docsResult?.title || ""}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {docsLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {/* Existing documents */}
+                  <div>
+                    <Label className="text-sm font-medium">Current Documents</Label>
+                    {(!docsResult?.documents || docsResult.documents.length === 0) ? (
+                      <p className="text-sm text-muted-foreground mt-2">No documents uploaded yet.</p>
+                    ) : (
+                      <div className="space-y-2 mt-2 max-h-60 overflow-y-auto">
+                        {docsResult.documents.map((d) => (
+                          <div key={d.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge className="bg-gray-100 text-gray-800 text-xs shrink-0">
+                                {d.fileType.toUpperCase()}
+                              </Badge>
+                              <span className="text-sm truncate">{d.title}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteDoc(d.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add document */}
+                  <div className="border-t pt-4 space-y-3">
+                    <Label className="text-sm font-medium">Add Document</Label>
+                    <Input
+                      placeholder="Document title (e.g. Test paper, Marked sheet)"
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      disabled={docUploading}
+                    />
+                    <input
+                      ref={docFileRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={handleDocFilePick}
+                      disabled={docUploading || !docTitle.trim()}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => docFileRef.current?.click()}
+                      disabled={docUploading || !docTitle.trim()}
+                      className="w-full"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {docUploading ? "Uploading..." : "Choose file"}
+                    </Button>
+                    {docUploading && <Progress value={docProgress} className="h-2" />}
+                    <p className="text-xs text-muted-foreground">
+                      PDF/DOC/DOCX/JPG/PNG, max 50 MB
+                    </p>
+                    {docError && <p className="text-xs text-red-600">{docError}</p>}
+                  </div>
+                </>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>

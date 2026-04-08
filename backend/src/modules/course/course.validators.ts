@@ -41,7 +41,8 @@ export const courseSearchQuerySchema = z.object({
 
 export const createCourseMaterialSchema = z.object({
   title: z.string().min(1).max(200),
-  fileUrl: z.string().url(),
+  // Accepts either a full URL or an S3 fileKey from the presigned-upload endpoint.
+  fileUrl: z.string().min(1).max(1000),
   fileType: z.string().min(1).max(20),
   fileSizeKb: z.number().int().positive().optional(),
 });

@@ -7,6 +7,7 @@ import {
   generatePresignedUploadUrl,
   validateUploadClaim,
   getMimeType,
+  toDisplayUrl,
   type UploadCategory,
 } from '../../shared/utils/s3Upload';
 import {
@@ -97,23 +98,25 @@ export class TutorService {
       prisma.tutorProfile.count({ where }),
     ]);
 
-    const formatted = tutors.map((t) => ({
-      id: t.id,
-      firstName: t.firstName,
-      lastName: t.lastName,
-      profilePhotoUrl: t.profilePhotoUrl,
-      bio: t.bio,
-      experience: t.experience,
-      rating: null, // M15: Reviews not implemented yet
-      totalReviews: 0,
-      courses: t.courses.map((tc) => ({
-        id: tc.course.id,
-        name: tc.course.name,
-        subject: tc.course.subject,
-        grade: tc.course.grade,
-        tutorRate: tc.tutorRate,
-      })),
-    }));
+    const formatted = await Promise.all(
+      tutors.map(async (t) => ({
+        id: t.id,
+        firstName: t.firstName,
+        lastName: t.lastName,
+        profilePhotoUrl: await toDisplayUrl(t.profilePhotoUrl),
+        bio: t.bio,
+        experience: t.experience,
+        rating: null, // M15: Reviews not implemented yet
+        totalReviews: 0,
+        courses: t.courses.map((tc) => ({
+          id: tc.course.id,
+          name: tc.course.name,
+          subject: tc.course.subject,
+          grade: tc.course.grade,
+          tutorRate: tc.tutorRate,
+        })),
+      }))
+    );
 
     return { data: formatted, meta: buildPaginationMeta(page, limit, total) };
   }
@@ -146,8 +149,8 @@ export class TutorService {
       id: tutor.id,
       firstName: tutor.firstName,
       lastName: tutor.lastName,
-      profilePhotoUrl: tutor.profilePhotoUrl,
-      introVideoUrl: tutor.introVideoUrl,
+      profilePhotoUrl: await toDisplayUrl(tutor.profilePhotoUrl),
+      introVideoUrl: await toDisplayUrl(tutor.introVideoUrl),
       bio: tutor.bio,
       experience: tutor.experience,
       rating: null,
@@ -188,6 +191,13 @@ export class TutorService {
 
     if (!tutor) throw ApiError.notFound('Tutor profile not found');
 
+    const certifications = await Promise.all(
+      tutor.certifications.map(async (c) => ({
+        ...c,
+        documentUrl: (await toDisplayUrl(c.documentUrl)) ?? c.documentUrl,
+      }))
+    );
+
     return {
       id: tutor.id,
       userId: tutor.userId,
@@ -197,8 +207,8 @@ export class TutorService {
       phone: tutor.phone,
       bio: tutor.bio,
       experience: tutor.experience,
-      profilePhotoUrl: tutor.profilePhotoUrl,
-      introVideoUrl: tutor.introVideoUrl,
+      profilePhotoUrl: await toDisplayUrl(tutor.profilePhotoUrl),
+      introVideoUrl: await toDisplayUrl(tutor.introVideoUrl),
       isActive: tutor.isActive,
       courses: tutor.courses.map((tc) => ({
         id: tc.id,
@@ -208,7 +218,7 @@ export class TutorService {
         grade: tc.course.grade,
         tutorRate: tc.tutorRate,
       })),
-      certifications: tutor.certifications,
+      certifications,
       lastLoginAt: tutor.user.lastLoginAt,
     };
   }
@@ -260,16 +270,23 @@ export class TutorService {
   async getOwnCertifications(userId: string) {
     const profile = await this.getProfileByUserId(userId);
 
-    return prisma.tutorCertification.findMany({
+    const certs = await prisma.tutorCertification.findMany({
       where: { tutorId: profile.id },
       orderBy: { createdAt: 'desc' },
     });
+
+    return Promise.all(
+      certs.map(async (c) => ({
+        ...c,
+        documentUrl: (await toDisplayUrl(c.documentUrl)) ?? c.documentUrl,
+      }))
+    );
   }
 
   async addCertification(userId: string, data: CreateCertificationDTO) {
     const profile = await this.getProfileByUserId(userId);
 
-    return prisma.tutorCertification.create({
+    const cert = await prisma.tutorCertification.create({
       data: {
         tutorId: profile.id,
         title: data.title,
@@ -278,6 +295,11 @@ export class TutorService {
         documentUrl: data.documentUrl,
       },
     });
+
+    return {
+      ...cert,
+      documentUrl: (await toDisplayUrl(cert.documentUrl)) ?? cert.documentUrl,
+    };
   }
 
   // ==========================================
@@ -397,27 +419,29 @@ export class TutorService {
       prisma.tutorProfile.count({ where }),
     ]);
 
-    const formatted = tutors.map((t) => ({
-      id: t.id,
-      userId: t.userId,
-      email: t.user.email,
-      firstName: t.firstName,
-      lastName: t.lastName,
-      phone: t.phone,
-      bio: t.bio,
-      experience: t.experience,
-      profilePhotoUrl: t.profilePhotoUrl,
-      isActive: t.isActive,
-      lastLoginAt: t.user.lastLoginAt,
-      certificationsCount: t._count.certifications,
-      courses: t.courses.map((tc) => ({
-        id: tc.course.id,
-        name: tc.course.name,
-        subject: tc.course.subject,
-        grade: tc.course.grade,
-        tutorRate: tc.tutorRate,
-      })),
-    }));
+    const formatted = await Promise.all(
+      tutors.map(async (t) => ({
+        id: t.id,
+        userId: t.userId,
+        email: t.user.email,
+        firstName: t.firstName,
+        lastName: t.lastName,
+        phone: t.phone,
+        bio: t.bio,
+        experience: t.experience,
+        profilePhotoUrl: await toDisplayUrl(t.profilePhotoUrl),
+        isActive: t.isActive,
+        lastLoginAt: t.user.lastLoginAt,
+        certificationsCount: t._count.certifications,
+        courses: t.courses.map((tc) => ({
+          id: tc.course.id,
+          name: tc.course.name,
+          subject: tc.course.subject,
+          grade: tc.course.grade,
+          tutorRate: tc.tutorRate,
+        })),
+      }))
+    );
 
     return { data: formatted, meta: buildPaginationMeta(page, limit, total) };
   }

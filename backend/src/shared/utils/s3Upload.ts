@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, s3Bucket, isS3Configured } from '../../config/s3';
 import { ApiError } from './apiError';
@@ -154,4 +154,49 @@ export async function generatePresignedUploadUrl(
 export function getMimeType(category: UploadCategory, fileType: string): string {
   const ext = fileType.toLowerCase();
   return UPLOAD_CONFIGS[category].mimeTypes[ext] ?? 'application/octet-stream';
+}
+
+/**
+ * Generate a presigned GET URL so the client can download / display a private
+ * S3 object directly. Used in API responses to turn stored fileKeys into
+ * usable URLs without exposing them publicly.
+ *
+ * @param key - The stored S3 object key
+ * @param expiresIn - URL validity in seconds (default 3600 = 1 hour)
+ */
+export async function generatePresignedDownloadUrl(
+  key: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  if (!isS3Configured || !s3Client) {
+    throw ApiError.internal('S3 not configured');
+  }
+  const command = new GetObjectCommand({ Bucket: s3Bucket, Key: key });
+  return getSignedUrl(s3Client, command, { expiresIn });
+}
+
+/**
+ * Heuristic: a stored value is treated as an S3 fileKey if it is a non-empty
+ * string that does NOT begin with a URL scheme (http://, https://, etc).
+ * This lets us pass through legacy external URLs (e.g. YouTube intro videos
+ * uploaded before the S3 pipeline) unchanged.
+ */
+export function isS3Key(value: string | null | undefined): value is string {
+  if (!value) return false;
+  return !/^[a-z][a-z0-9+\-.]*:\/\//i.test(value);
+}
+
+/**
+ * Convenience: if `value` is an S3 fileKey, sign it and return a download URL.
+ * If it's already a URL (http/https/etc.), return it unchanged. If null/empty,
+ * returns null. Safely no-ops when S3 isn't configured.
+ */
+export async function toDisplayUrl(
+  value: string | null | undefined,
+  expiresIn: number = 3600
+): Promise<string | null> {
+  if (!value) return null;
+  if (!isS3Key(value)) return value;
+  if (!isS3Configured || !s3Client) return value; // local dev fallback
+  return generatePresignedDownloadUrl(value, expiresIn);
 }

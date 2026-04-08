@@ -32,11 +32,14 @@ export const tutorCourseParams = z.object({
 // M3: TUTOR PROFILE
 // ==========================================
 
+// profilePhotoUrl + introVideoUrl accept either a full URL (legacy YouTube etc.)
+// or an S3 fileKey returned by the presigned-upload endpoints. We don't enforce
+// .url() since fileKeys are bare paths like "profile-photos/<id>/<uuid>.jpg".
 export const updateTutorProfileSchema = z.object({
   bio: z.string().max(2000).optional(),
   phone: z.string().optional(),
-  profilePhotoUrl: z.string().url().optional(),
-  introVideoUrl: z.string().url().optional().nullable(),
+  profilePhotoUrl: z.string().min(1).max(1000).optional().nullable(),
+  introVideoUrl: z.string().min(1).max(1000).optional().nullable(),
   experience: z.number().int().min(0).optional(),
 });
 
@@ -44,7 +47,8 @@ export const createCertificationSchema = z.object({
   title: z.string().min(2).max(200),
   institution: z.string().max(200).optional(),
   year: z.number().int().min(1950).max(2030).optional(),
-  documentUrl: z.string().url('Must be a valid URL'),
+  // Accepts either a full URL or an S3 fileKey from the presigned-upload endpoint.
+  documentUrl: z.string().min(1).max(1000),
 });
 
 // ==========================================

@@ -6,7 +6,18 @@ import {
   generatePresignedUploadUrl,
   validateUploadClaim,
   getMimeType,
+  toDisplayUrl,
 } from '../../shared/utils/s3Upload';
+
+// Sign every material's fileUrl. Used by all read paths that return materials.
+async function signMaterials<T extends { fileUrl: string }>(materials: T[]): Promise<T[]> {
+  return Promise.all(
+    materials.map(async (m) => ({
+      ...m,
+      fileUrl: (await toDisplayUrl(m.fileUrl)) ?? m.fileUrl,
+    }))
+  );
+}
 import {
   CreateCourseDTO,
   UpdateCourseDTO,
@@ -160,7 +171,7 @@ export class CourseService {
       grade: { id: course.grade.id, name: course.grade.name },
       gradeTier: course.grade.tier,
       isActive: course.isActive,
-      materials: course.materials,
+      materials: await signMaterials(course.materials),
       tutors: course.tutors.map((tc) => tc.tutor),
     };
   }
@@ -305,17 +316,18 @@ export class CourseService {
       },
     });
 
-    return assignments
-      .filter((a) => !a.course.deletedAt && a.course.isActive)
-      .map((a) => ({
+    const filtered = assignments.filter((a) => !a.course.deletedAt && a.course.isActive);
+    return Promise.all(
+      filtered.map(async (a) => ({
         id: a.course.id,
         name: a.course.name,
         description: a.course.description,
         subject: a.course.subject,
         grade: a.course.grade,
         isActive: a.course.isActive,
-        materials: a.course.materials,
-      }));
+        materials: await signMaterials(a.course.materials),
+      }))
+    );
   }
 
   async tutorAddMaterial(userId: string, courseId: string, data: CreateCourseMaterialDTO) {

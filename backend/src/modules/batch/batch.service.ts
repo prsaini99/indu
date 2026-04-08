@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/utils/apiError';
 import { parsePagination, buildPaginationMeta } from '../../shared/utils/pagination';
 import { computeBalance } from '../../shared/utils/credit';
 import { addMinutesToTime, formatDateUTC } from '../../shared/utils/time';
+import { toDisplayUrl } from '../../shared/utils/s3Upload';
 import { CreateBatchDTO, UpdateBatchDTO, JoinBatchDTO, BatchQueryDTO } from './batch.types';
 
 const batchInclude = {
@@ -698,9 +699,16 @@ export class BatchService {
       },
     });
 
+    const materials = await Promise.all(
+      (course?.materials || []).map(async (m) => ({
+        ...m,
+        fileUrl: (await toDisplayUrl(m.fileUrl)) ?? m.fileUrl,
+      }))
+    );
+
     return {
       courseName: course?.name || batch.subject.name,
-      materials: course?.materials || [],
+      materials,
     };
   }
 }

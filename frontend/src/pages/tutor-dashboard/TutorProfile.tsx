@@ -27,6 +27,8 @@ import {
   type TutorOwnProfile,
   type TutorCertification,
 } from "@/services/tutor.service";
+import { FileUploadInput } from "@/components/FileUploadInput";
+import { uploadRequestors } from "@/services/upload.service";
 
 const TutorProfile = () => {
   const { toast } = useToast();
@@ -43,6 +45,7 @@ const TutorProfile = () => {
     phone: "",
     experience: 0,
     introVideoUrl: "",
+    profilePhotoUrl: "",
   });
 
   // Certification form
@@ -53,6 +56,7 @@ const TutorProfile = () => {
     year: "",
     documentUrl: "",
   });
+  const [certUploadKey, setCertUploadKey] = useState(0); // bump to reset FileUploadInput
   const [addingCert, setAddingCert] = useState(false);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
 
@@ -100,6 +104,7 @@ const TutorProfile = () => {
       phone: profile.phone || "",
       experience: profile.experience,
       introVideoUrl: profile.introVideoUrl || "",
+      profilePhotoUrl: profile.profilePhotoUrl || "",
     });
     setIsEditing(true);
   };
@@ -116,6 +121,7 @@ const TutorProfile = () => {
         phone: editData.phone || undefined,
         experience: editData.experience,
         introVideoUrl: editData.introVideoUrl || null,
+        profilePhotoUrl: editData.profilePhotoUrl || null,
       });
       toast({
         title: "Profile Updated",
@@ -167,6 +173,7 @@ const TutorProfile = () => {
         description: "Your certification has been added successfully.",
       });
       setCertForm({ title: "", institution: "", year: "", documentUrl: "" });
+      setCertUploadKey((k) => k + 1);
       setShowCertForm(false);
       await fetchProfile();
     } catch (err: any) {
@@ -207,7 +214,7 @@ const TutorProfile = () => {
     if (!videoUrl.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please enter a YouTube URL.",
+        description: "Please upload a video file first.",
         variant: "destructive",
       });
       return;
@@ -308,15 +315,30 @@ const TutorProfile = () => {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row items-start gap-6">
-              <div className="h-24 w-24 rounded-full bg-teal-600 text-white flex items-center justify-center text-2xl font-bold shrink-0">
-                {profile.profilePhotoUrl ? (
-                  <img
-                    src={profile.profilePhotoUrl}
-                    alt={fullName}
-                    className="h-24 w-24 rounded-full object-cover"
-                  />
-                ) : (
-                  getInitials()
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="h-24 w-24 rounded-full bg-teal-600 text-white flex items-center justify-center text-2xl font-bold">
+                  {(isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl) ? (
+                    <img
+                      src={isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl!}
+                      alt={fullName}
+                      className="h-24 w-24 rounded-full object-cover"
+                    />
+                  ) : (
+                    getInitials()
+                  )}
+                </div>
+                {isEditing && (
+                  <div className="w-48">
+                    <FileUploadInput
+                      accept=".jpg,.jpeg,.png,.webp"
+                      maxSizeMb={5}
+                      requestSignedUrl={uploadRequestors.profilePhoto}
+                      onUploadComplete={(fileKey) =>
+                        setEditData((d) => ({ ...d, profilePhotoUrl: fileKey }))
+                      }
+                      helperText="JPG/PNG/WEBP, max 5 MB"
+                    />
+                  </div>
                 )}
               </div>
 
@@ -536,17 +558,17 @@ const TutorProfile = () => {
                       placeholder="e.g. 2020"
                     />
                   </div>
-                  <div>
-                    <Label className="mb-1">Document URL *</Label>
-                    <Input
-                      value={certForm.documentUrl}
-                      onChange={(e) =>
-                        setCertForm({
-                          ...certForm,
-                          documentUrl: e.target.value,
-                        })
+                  <div className="sm:col-span-2">
+                    <Label className="mb-1">Certification Document *</Label>
+                    <FileUploadInput
+                      key={certUploadKey}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      maxSizeMb={10}
+                      requestSignedUrl={uploadRequestors.certification}
+                      onUploadComplete={(fileKey) =>
+                        setCertForm((f) => ({ ...f, documentUrl: fileKey }))
                       }
-                      placeholder="https://..."
+                      helperText="PDF/JPG/PNG, max 10 MB"
                     />
                   </div>
                 </div>
@@ -687,24 +709,23 @@ const TutorProfile = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Inline add/edit form */}
+            {/* Inline upload form */}
             {showVideoForm && (
               <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50/50 p-4">
-                <Label className="mb-1">YouTube Video URL</Label>
-                <Input
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
+                <Label className="mb-2">Upload Intro Video</Label>
+                <FileUploadInput
+                  accept=".mp4,.webm,.mov"
+                  maxSizeMb={100}
+                  requestSignedUrl={uploadRequestors.introVideo}
+                  onUploadComplete={(fileKey) => setVideoUrl(fileKey)}
+                  helperText="MP4/WEBM/MOV, max 100 MB. Keep it under 30 seconds."
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Add a short 10–20 second YouTube intro video about yourself.
-                </p>
                 <div className="flex gap-2 mt-3">
                   <Button
                     size="sm"
                     className="bg-teal-600 hover:bg-teal-700"
                     onClick={handleSaveVideo}
-                    disabled={savingVideo}
+                    disabled={savingVideo || !videoUrl}
                   >
                     {savingVideo ? (
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -728,19 +749,31 @@ const TutorProfile = () => {
               </div>
             )}
 
-            {/* Video embed */}
+            {/* Video embed — YouTube URLs use iframe, S3 fileKeys show placeholder until download-URL endpoint exists */}
             {profile.introVideoUrl ? (
-              <div className="aspect-video max-w-md">
-                <iframe
-                  className="w-full h-full rounded-lg"
-                  src={profile.introVideoUrl
-                    .replace("watch?v=", "embed/")
-                    .replace("youtu.be/", "www.youtube.com/embed/")}
-                  title="Tutor Intro Video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
+              profile.introVideoUrl.includes("youtube") || profile.introVideoUrl.includes("youtu.be") ? (
+                <div className="aspect-video max-w-md">
+                  <iframe
+                    className="w-full h-full rounded-lg"
+                    src={profile.introVideoUrl
+                      .replace("watch?v=", "embed/")
+                      .replace("youtu.be/", "www.youtube.com/embed/")}
+                    title="Tutor Intro Video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-4 max-w-md">
+                  <div className="flex items-center gap-2 text-sm text-teal-700">
+                    <Video className="h-4 w-4" />
+                    Intro video uploaded
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 break-all">
+                    {profile.introVideoUrl}
+                  </p>
+                </div>
+              )
             ) : !showVideoForm ? (
               <p className="text-sm text-muted-foreground">
                 No intro video added yet.

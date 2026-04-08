@@ -126,7 +126,7 @@ export const tutorAssessmentService = {
     await api.delete(`/assessment-results/${id}`);
   },
 
-  async uploadDocument(id: string, payload: { title: string; fileType: string }): Promise<{ documentId: string; uploadUrl: string | null; fileKey: string }> {
+  async uploadDocument(id: string, payload: { title: string; fileType: string; fileSizeKb?: number }): Promise<{ documentId: string; uploadUrl: string | null; fileKey: string }> {
     const { data } = await api.post(`/assessment-results/${id}/documents`, payload);
     return data.data;
   },

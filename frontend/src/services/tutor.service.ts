@@ -160,7 +160,7 @@ export const tutorService = {
     return data.data;
   },
 
-  async updateProfile(payload: { bio?: string; phone?: string; experience?: number; profilePhotoUrl?: string }): Promise<void> {
+  async updateProfile(payload: { bio?: string; phone?: string; experience?: number; profilePhotoUrl?: string | null; introVideoUrl?: string | null }): Promise<void> {
     await api.patch('/tutors/profile', payload);
   },
 
