@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, AlertCircle, Plus, X } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayTimeRange } from "@/lib/utils";
@@ -313,7 +313,7 @@ const NewEnrollment = () => {
                                 onClick={() => removeDay(slot.dayOfWeek)}
                                 className="text-indigo-400 hover:text-red-500 transition-colors"
                               >
-                                <X className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           ))}

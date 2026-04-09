@@ -37,7 +37,8 @@ import {
   Search,
   Trash2,
   Upload,
-  X,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import axios from "axios";
@@ -77,7 +78,12 @@ const TutorAssessments = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
 
-  // Documents dialog
+  // View documents dialog (read-only preview)
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewResult, setViewResult] = useState<AssessmentResultDetail | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  // Manage documents dialog
   const [docsOpen, setDocsOpen] = useState(false);
   const [docsResult, setDocsResult] = useState<AssessmentResultDetail | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -99,6 +105,9 @@ const TutorAssessments = () => {
     remarks: "",
     assessedAt: new Date().toISOString().split("T")[0],
   });
+  const [createFile, setCreateFile] = useState<File | null>(null);
+  const [createDocTitle, setCreateDocTitle] = useState("");
+  const createFileRef = useRef<HTMLInputElement | null>(null);
 
   const fetchResults = async () => {
     setLoading(true);
@@ -130,6 +139,30 @@ const TutorAssessments = () => {
     return true;
   });
 
+  const resetCreateForm = () => {
+    setForm({ studentId: "", subjectId: "", title: "", score: "", maxScore: "100", remarks: "", assessedAt: new Date().toISOString().split("T")[0] });
+    setCreateFile(null);
+    setCreateDocTitle("");
+    if (createFileRef.current) createFileRef.current.value = "";
+  };
+
+  const handleCreateFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    const ext = picked.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ASSESSMENT_ALLOWED.includes(ext)) {
+      toast({ title: "Invalid file", description: `File type .${ext} not allowed.`, variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    if (picked.size / (1024 * 1024) > ASSESSMENT_MAX_MB) {
+      toast({ title: "File too large", description: `Max ${ASSESSMENT_MAX_MB} MB.`, variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    setCreateFile(picked);
+  };
+
   const handleCreate = async () => {
     if (!form.studentId || !form.subjectId || !form.title || !form.score) {
       toast({ title: "Validation", description: "Please fill all required fields", variant: "destructive" });
@@ -137,19 +170,58 @@ const TutorAssessments = () => {
     }
     setSubmitting(true);
     try {
-      await tutorAssessmentService.create({
+      // Step 1: create the assessment result
+      const result = await tutorAssessmentService.create({
         ...form,
         score: Number(form.score),
         maxScore: Number(form.maxScore) || 100,
       });
+
+      // Step 2: if a file was attached, upload it to the new result
+      if (createFile) {
+        const ext = createFile.name.split(".").pop()?.toLowerCase() ?? "";
+        const fileSizeKb = Math.ceil(createFile.size / 1024);
+        const docTitleFinal = createDocTitle.trim() || createFile.name;
+        try {
+          const { uploadUrl } = await tutorAssessmentService.uploadDocument(result.id, {
+            title: docTitleFinal,
+            fileType: ext,
+            fileSizeKb,
+          });
+          if (uploadUrl) {
+            await axios.put(uploadUrl, createFile, {
+              headers: { "Content-Type": ASSESSMENT_MIME[ext] },
+            });
+          }
+        } catch {
+          // Result was created but doc upload failed — notify but don't block
+          toast({ title: "Warning", description: "Result saved but document upload failed. You can upload it later via Manage Documents.", variant: "destructive" });
+        }
+      }
+
       toast({ title: "Success", description: "Assessment result uploaded" });
       setCreateOpen(false);
-      setForm({ studentId: "", subjectId: "", title: "", score: "", maxScore: "100", remarks: "", assessedAt: new Date().toISOString().split("T")[0] });
+      resetCreateForm();
       fetchResults();
     } catch {
       toast({ title: "Error", description: "Failed to upload result", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openViewDialog = async (resultId: string) => {
+    setViewOpen(true);
+    setViewLoading(true);
+    setViewResult(null);
+    try {
+      const detail = await tutorAssessmentService.getById(resultId);
+      setViewResult(detail);
+    } catch {
+      toast({ title: "Error", description: "Failed to load documents", variant: "destructive" });
+      setViewOpen(false);
+    } finally {
+      setViewLoading(false);
     }
   };
 
@@ -218,9 +290,10 @@ const TutorAssessments = () => {
       setDocTitle("");
       if (docFileRef.current) docFileRef.current.value = "";
 
-      // Refresh documents list
+      // Refresh documents list + results table (for eye icon)
       const detail = await tutorAssessmentService.getById(docsResult.id);
       setDocsResult(detail);
+      fetchResults();
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message || err?.message || "Upload failed";
       setDocError(msg);
@@ -237,6 +310,7 @@ const TutorAssessments = () => {
       toast({ title: "Document removed" });
       const detail = await tutorAssessmentService.getById(docsResult.id);
       setDocsResult(detail);
+      fetchResults();
     } catch {
       toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
     }
@@ -389,6 +463,17 @@ const TutorAssessments = () => {
                         <TableCell>{new Date(r.assessedAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            {(r.documentsCount ?? 0) > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openViewDialog(r.id)}
+                                title="View uploaded documents"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -426,7 +511,7 @@ const TutorAssessments = () => {
 
         {/* Create Dialog */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Upload Assessment Result</DialogTitle>
             </DialogHeader>
@@ -514,9 +599,49 @@ const TutorAssessments = () => {
                   onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                 />
               </div>
+              {/* Optional document attachment */}
+              <div className="border-t pt-3 space-y-2">
+                <Label>Attach Document (optional)</Label>
+                <Input
+                  placeholder="Document title (e.g. Test paper)"
+                  value={createDocTitle}
+                  onChange={(e) => setCreateDocTitle(e.target.value)}
+                />
+                <input
+                  ref={createFileRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleCreateFilePick}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => createFileRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {createFile ? createFile.name : "Choose file"}
+                </Button>
+                {createFile && (
+                  <button
+                    type="button"
+                    className="text-xs text-red-500 hover:underline ml-2"
+                    onClick={() => {
+                      setCreateFile(null);
+                      if (createFileRef.current) createFileRef.current.value = "";
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  PDF/DOC/DOCX/JPG/PNG, max 50 MB
+                </p>
+              </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setCreateOpen(false); resetCreateForm(); }}>Cancel</Button>
               <Button onClick={handleCreate} disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Upload Result
@@ -562,7 +687,7 @@ const TutorAssessments = () => {
                               className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => handleDeleteDoc(d.id)}
                             >
-                              <X className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
@@ -604,6 +729,61 @@ const TutorAssessments = () => {
                     {docError && <p className="text-xs text-red-600">{docError}</p>}
                   </div>
                 </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Documents Dialog (read-only preview) */}
+        <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Uploaded Documents — {viewResult?.title || ""}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              {viewLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !viewResult?.documents?.length ? (
+                <p className="text-sm text-muted-foreground">No documents found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {viewResult.documents.map((d) => (
+                    <div key={d.id} className="rounded-md border overflow-hidden">
+                      {/* Image preview inline */}
+                      {["jpg", "jpeg", "png"].includes(d.fileType.toLowerCase()) && d.fileUrl ? (
+                        <img
+                          src={d.fileUrl}
+                          alt={d.title}
+                          className="w-full max-h-64 object-contain bg-gray-50"
+                        />
+                      ) : null}
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge className="bg-gray-100 text-gray-800 text-xs shrink-0">
+                            {d.fileType.toUpperCase()}
+                          </Badge>
+                          <span className="text-sm truncate">{d.title}</span>
+                        </div>
+                        {d.fileUrl && (
+                          <a
+                            href={d.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-700 shrink-0"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </DialogContent>

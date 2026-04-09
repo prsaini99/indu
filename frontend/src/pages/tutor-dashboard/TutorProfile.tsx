@@ -47,6 +47,8 @@ const TutorProfile = () => {
     introVideoUrl: "",
     profilePhotoUrl: "",
   });
+  // Instant preview URL (from the picked file, not from S3)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // Certification form
   const [showCertForm, setShowCertForm] = useState(false);
@@ -111,6 +113,7 @@ const TutorProfile = () => {
 
   const handleCancel = () => {
     setIsEditing(false);
+    setPhotoPreview(null);
   };
 
   const handleSave = async () => {
@@ -128,6 +131,7 @@ const TutorProfile = () => {
         description: "Your profile has been updated successfully.",
       });
       setIsEditing(false);
+      setPhotoPreview(null);
       await fetchProfile();
     } catch (err: any) {
       toast({
@@ -317,9 +321,12 @@ const TutorProfile = () => {
             <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="flex flex-col items-center gap-2 shrink-0">
                 <div className="h-24 w-24 rounded-full bg-teal-600 text-white flex items-center justify-center text-2xl font-bold">
-                  {(isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl) ? (
+                  {/* Instant preview from picked file > saved photo > initials */}
+                  {photoPreview ? (
+                    <img src={photoPreview} alt={fullName} className="h-24 w-24 rounded-full object-cover" />
+                  ) : (isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl) ? (
                     <img
-                      src={isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl!}
+                      src={(isEditing ? editData.profilePhotoUrl : profile.profilePhotoUrl)!}
                       alt={fullName}
                       className="h-24 w-24 rounded-full object-cover"
                     />
@@ -333,9 +340,10 @@ const TutorProfile = () => {
                       accept=".jpg,.jpeg,.png,.webp"
                       maxSizeMb={5}
                       requestSignedUrl={uploadRequestors.profilePhoto}
-                      onUploadComplete={(fileKey) =>
-                        setEditData((d) => ({ ...d, profilePhotoUrl: fileKey }))
-                      }
+                      onUploadComplete={(fileKey, file) => {
+                        setEditData((d) => ({ ...d, profilePhotoUrl: fileKey }));
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }}
                       helperText="JPG/PNG/WEBP, max 5 MB"
                     />
                   </div>
@@ -764,14 +772,12 @@ const TutorProfile = () => {
                   />
                 </div>
               ) : (
-                <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-4 max-w-md">
-                  <div className="flex items-center gap-2 text-sm text-teal-700">
-                    <Video className="h-4 w-4" />
-                    Intro video uploaded
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 break-all">
-                    {profile.introVideoUrl}
-                  </p>
+                <div className="aspect-video max-w-md">
+                  <video
+                    className="w-full h-full rounded-lg"
+                    src={profile.introVideoUrl}
+                    controls
+                  />
                 </div>
               )
             ) : !showVideoForm ? (

@@ -25,6 +25,7 @@ export interface AssessmentDocument {
   id: string;
   title: string;
   fileType: string;
+  fileUrl?: string;
   fileSizeKb: number | null;
   createdAt: string;
 }

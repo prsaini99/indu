@@ -34,7 +34,6 @@ import {
   ChevronRight,
   Loader2,
   Pencil,
-  X,
   BookOpen,
   Plus,
   Trash2,
@@ -630,7 +629,7 @@ const TutorManagement = () => {
                         onClick={() => handleRemoveCourse(course.id)}
                         title="Remove course"
                       >
-                        <X className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}

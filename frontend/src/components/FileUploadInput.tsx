@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { uploadFileViaPresignedUrl, type RequestSignedUrlFn } from '@/services/upload.service';
@@ -28,60 +28,67 @@ export function FileUploadInput({
   disabled = false,
 }: FileUploadInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   const allowedExts = accept
     .split(',')
     .map((s) => s.trim().replace(/^\./, '').toLowerCase());
-
-  const reset = () => {
-    setFile(null);
-    setUploading(false);
-    setProgress(0);
-    setError(null);
-    setUploadedKey(null);
-    if (inputRef.current) inputRef.current.value = '';
-  };
 
   const handlePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
     if (!picked) return;
 
     setError(null);
-    setUploadedKey(null);
+    setDone(false);
+    setUploadedFileName(null);
 
-    // Client-side validation (matches backend rules for instant feedback)
+    // Client-side validation
     const ext = picked.name.split('.').pop()?.toLowerCase() ?? '';
     if (!allowedExts.includes(ext)) {
       setError(`File type .${ext} not allowed. Allowed: ${allowedExts.join(', ')}`);
-      setFile(null);
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
     const sizeMb = picked.size / (1024 * 1024);
     if (sizeMb > maxSizeMb) {
       setError(`File too large (${sizeMb.toFixed(1)} MB). Max ${maxSizeMb} MB.`);
-      setFile(null);
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
-    setFile(picked);
     setUploading(true);
     setProgress(0);
 
     try {
       const { fileKey } = await uploadFileViaPresignedUrl(picked, requestSignedUrl, setProgress);
-      setUploadedKey(fileKey);
+      setDone(true);
+      setUploadedFileName(picked.name);
       onUploadComplete(fileKey, picked);
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Upload failed';
+      const backendMsg = err?.response?.data?.error?.message;
+      const statusCode = err?.response?.status;
+      let msg: string;
+      if (backendMsg) {
+        msg = backendMsg;
+      } else if (statusCode === 500) {
+        msg = 'Server error — please try again later.';
+      } else if (statusCode === 403) {
+        msg = 'Upload rejected — permission denied.';
+      } else if (statusCode === 413) {
+        msg = 'File too large for the server to accept.';
+      } else if (err?.code === 'ERR_NETWORK') {
+        msg = 'Network error — check your connection and try again.';
+      } else {
+        msg = 'Upload failed — please try again.';
+      }
       setError(msg);
-      setFile(null);
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -98,41 +105,21 @@ export function FileUploadInput({
         className="hidden"
       />
 
-      {!file && !uploadedKey && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => inputRef.current?.click()}
-          disabled={disabled}
-          className="w-full"
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          Choose file
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => inputRef.current?.click()}
+        disabled={disabled || uploading}
+      >
+        <Upload className="w-4 h-4 mr-2" />
+        {uploading ? 'Uploading...' : done ? 'Change file' : 'Choose file'}
+      </Button>
 
-      {file && (
-        <div className="border rounded-md p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {uploading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-              {uploadedKey && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
-              <span className="text-sm truncate">{file.name}</span>
-              <span className="text-xs text-muted-foreground shrink-0">
-                ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </span>
-            </div>
-            {!uploading && (
-              <Button type="button" variant="ghost" size="sm" onClick={reset}>
-                <X className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-          {uploading && <Progress value={progress} className="h-2" />}
-          {uploadedKey && (
-            <div className="text-xs text-green-700">Upload complete</div>
-          )}
-        </div>
+      {uploading && <Progress value={progress} className="h-1.5" />}
+
+      {done && uploadedFileName && (
+        <div className="text-xs text-green-700">{uploadedFileName}</div>
       )}
 
       {error && (
@@ -142,7 +129,7 @@ export function FileUploadInput({
         </div>
       )}
 
-      {helperText && !error && (
+      {helperText && !error && !uploading && (
         <div className="text-xs text-muted-foreground">{helperText}</div>
       )}
     </div>
