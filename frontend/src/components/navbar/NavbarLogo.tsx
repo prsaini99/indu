@@ -7,7 +7,7 @@ const NavbarLogo = () => {
       <div className="relative h-12 w-56">
         <img 
           src="/indu.png"
-          alt="Indu AE Logo" 
+          alt="Indu Logo" 
           className="h-full object-contain"
         />
       </div>

@@ -7,9 +7,9 @@ const apiUrl = `http://localhost:${env.PORT}/api/${env.API_VERSION}`;
 const spec = {
   openapi: '3.0.3',
   info: {
-    title: 'Indu AE — Tutoring Platform API',
+    title: 'Indu — Tutoring Platform API',
     version: '1.0.0',
-    description: 'API for the Indu AE online tutoring platform. Parents (UAE) hire tutors (India) for 1:1 and group classes.',
+    description: 'API for the Indu online tutoring platform. Parents (UAE) hire tutors (India) for 1:1 and group classes.',
   },
   servers: [{ url: apiUrl }],
   components: {
@@ -190,6 +190,6 @@ const spec = {
 
 const router = Router();
 router.use('/', swaggerUi.serve);
-router.get('/', swaggerUi.setup(spec, { customSiteTitle: 'Indu AE API Docs' }));
+router.get('/', swaggerUi.setup(spec, { customSiteTitle: 'Indu API Docs' }));
 
 export default router;

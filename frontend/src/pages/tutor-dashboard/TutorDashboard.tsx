@@ -16,7 +16,7 @@ const TutorDashboard = () => {
   const tz = user?.timezone || "Asia/Dubai";
 
   useEffect(() => {
-    document.title = "Tutor Dashboard | Indu AE";
+    document.title = "Tutor Dashboard | Indu";
     dashboardService.getTutorDashboard()
       .then(setData)
       .catch(() => {})

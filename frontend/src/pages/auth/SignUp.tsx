@@ -105,7 +105,7 @@ const SignUp = () => {
   return (
     <PageLayout
       title="Create Your Account"
-      description="Join Indu AE as a parent to discover live online classes for your children taught by inspiring teachers."
+      description="Join Indu as a parent to discover live online classes for your children taught by inspiring teachers."
     >
       <div className="max-w-md mx-auto">
         <Form {...form}>

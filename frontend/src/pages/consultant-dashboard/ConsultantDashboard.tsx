@@ -24,7 +24,7 @@ const ConsultantDashboard = () => {
   const tz = user?.timezone || "Asia/Dubai";
 
   useEffect(() => {
-    document.title = "Consultant Dashboard | Indu AE";
+    document.title = "Consultant Dashboard | Indu";
     dashboardService.getConsultantDashboard()
       .then(setData)
       .catch(() => {})

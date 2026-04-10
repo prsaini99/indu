@@ -112,7 +112,7 @@ const TutorDashboardLayout = ({ children }: TutorDashboardLayoutProps) => {
               <div className="relative h-10 w-40">
                 <img
                   src="/indu.png"
-                  alt="Indu AE Logo"
+                  alt="Indu Logo"
                   className="h-full object-contain"
                 />
               </div>

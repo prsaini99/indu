@@ -50,7 +50,7 @@ const HeroBanner = () => {
 
             <div className="flex items-center gap-4">
               <Button asChild variant="outline" className="border-talent-primary text-talent-primary hover:bg-talent-primary hover:text-white font-medium px-6 py-6 h-auto text-lg">
-                <a href="https://induae-student.vercel.app/" target="_blank" rel="noopener noreferrer">
+                <a href="https://indu-student.vercel.app/" target="_blank" rel="noopener noreferrer">
                   Student Dashboard
                 </a>
               </Button>

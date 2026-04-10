@@ -12,7 +12,7 @@ const CallToAction = () => {
             Ready to Help Your Child Discover Their Talents?
           </h2>
           <p className="text-white/80 text-lg mb-8">
-            Join thousands of families who are nurturing their children's growth with Indu AE's expert-led classes.
+            Join thousands of families who are nurturing their children's growth with Indu's expert-led classes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button className="bg-white text-talent-primary hover:bg-gray-100 font-medium text-lg px-8 py-6 h-auto">

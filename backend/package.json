@@ -1,7 +1,7 @@
 {
-  "name": "induae-backend",
+  "name": "indu-backend",
   "version": "1.0.0",
-  "description": "Indu AE Tutor-Student Learning Platform API",
+  "description": "Indu Tutor-Student Learning Platform API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

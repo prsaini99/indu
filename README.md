@@ -1,4 +1,4 @@
-# Indu AE — Online Tutoring Platform
+# Indu — Online Tutoring Platform
 
 An online tutoring marketplace connecting Indian tutors with UAE-based students (Grade 1–12). Parents purchase credits (AED), tutors are paid in INR, and consultants mediate the matching process.
 

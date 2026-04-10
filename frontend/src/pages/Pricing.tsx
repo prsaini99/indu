@@ -356,7 +356,7 @@ const Pricing = () => {
                       <span className="text-gray-500">{row.traditional}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-teal-600 font-medium">Indu AE</span>
+                      <span className="text-teal-600 font-medium">Indu</span>
                       <span className="text-teal-700 font-medium">{row.ours}</span>
                     </div>
                   </div>

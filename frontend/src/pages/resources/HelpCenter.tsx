@@ -64,7 +64,7 @@ const HelpCenter = () => {
       questions: [
         "What if the video or audio isn't working?",
         "How do I improve connection quality?",
-        "What browsers work best with Indu AE?",
+        "What browsers work best with Indu?",
         "How do I report a technical issue?",
       ]
     },
@@ -97,7 +97,7 @@ const HelpCenter = () => {
   return (
     <PageLayout
       title="Help Center"
-      description="Find answers to your questions and get the support you need to make the most of Indu AE."
+      description="Find answers to your questions and get the support you need to make the most of Indu."
     >
       <div className="space-y-16">
         {/* Search section */}
@@ -186,7 +186,7 @@ const HelpCenter = () => {
               </div>
               <div className="p-4">
                 <h3 className="font-semibold mb-1">Getting Started Guide</h3>
-                <p className="text-talent-muted text-sm">A complete walkthrough of the Indu AE platform and features.</p>
+                <p className="text-talent-muted text-sm">A complete walkthrough of the Indu platform and features.</p>
               </div>
             </div>
             <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
@@ -232,9 +232,9 @@ const HelpCenter = () => {
           <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
           <div className="space-y-4">
             <div className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold mb-2">What ages does Indu AE support?</h3>
+              <h3 className="text-lg font-semibold mb-2">What ages does Indu support?</h3>
               <p className="text-talent-muted">
-                Indu AE offers classes for children ages 3-18. We have specially designed classes for different age groups with age-appropriate content and teaching methods.
+                Indu offers classes for children ages 3-18. We have specially designed classes for different age groups with age-appropriate content and teaching methods.
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-200">

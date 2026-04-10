@@ -29,9 +29,11 @@ import {
 } from "@/services/tutor.service";
 import { FileUploadInput } from "@/components/FileUploadInput";
 import { uploadRequestors } from "@/services/upload.service";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TutorProfile = () => {
   const { toast } = useToast();
+  const { refreshProfile } = useAuth();
 
   // Profile state
   const [profile, setProfile] = useState<TutorOwnProfile | null>(null);
@@ -133,6 +135,7 @@ const TutorProfile = () => {
       setIsEditing(false);
       setPhotoPreview(null);
       await fetchProfile();
+      refreshProfile(); // Update navbar avatar
     } catch (err: any) {
       toast({
         title: "Update Failed",

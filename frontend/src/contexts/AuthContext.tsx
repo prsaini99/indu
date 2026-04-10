@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { authService, LoginResponse } from "@/services/auth.service";
 import { userService, ParentProfile } from "@/services/user.service";
+import { tutorService } from "@/services/tutor.service";
 import type { Child } from "@/types/platform";
 
 // Map backend roles to frontend roles
@@ -93,6 +94,33 @@ function mapBackendChildren(children: ParentProfile["children"]): Child[] {
   }));
 }
 
+// Enrich user with role-specific profile data (avatar, children, balance, etc.)
+async function enrichUserProfile(mappedUser: User): Promise<User> {
+  if (mappedUser.role === "parent") {
+    try {
+      const profile = await userService.getParentProfile();
+      mappedUser.fullName = `${profile.firstName} ${profile.lastName}`;
+      mappedUser.phone = profile.phone || undefined;
+      mappedUser.children = mapBackendChildren(profile.children || []);
+      mappedUser.creditBalance = profile.walletBalance;
+    } catch {
+      // Profile fetch failed — still allow login
+    }
+  } else if (mappedUser.role === "tutor") {
+    try {
+      const profile = await tutorService.getProfile();
+      mappedUser.fullName = `${profile.firstName} ${profile.lastName}`;
+      mappedUser.phone = profile.phone || undefined;
+      if (profile.profilePhotoUrl) {
+        mappedUser.avatar = profile.profilePhotoUrl;
+      }
+    } catch {
+      // Profile fetch failed — still allow login
+    }
+  }
+  return mappedUser;
+}
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -107,18 +135,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const result = await authService.refresh();
         if (result) {
-          const mappedUser = mapLoginToUser(result);
-          if (mappedUser.role === "parent") {
-            try {
-              const profile = await userService.getParentProfile();
-              mappedUser.fullName = `${profile.firstName} ${profile.lastName}`;
-              mappedUser.phone = profile.phone || undefined;
-              mappedUser.children = mapBackendChildren(profile.children || []);
-              mappedUser.creditBalance = profile.walletBalance;
-            } catch {
-              // Profile fetch failed — still allow login
-            }
-          }
+          const mappedUser = await enrichUserProfile(mapLoginToUser(result));
           setUser(mappedUser);
         }
       } catch {
@@ -143,21 +160,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     try {
       const result = await authService.login(email, password);
-      const mappedUser = mapLoginToUser(result);
-
-      // If parent, fetch full profile with children
-      if (mappedUser.role === "parent") {
-        try {
-          const profile = await userService.getParentProfile();
-          mappedUser.fullName = `${profile.firstName} ${profile.lastName}`;
-          mappedUser.phone = profile.phone || undefined;
-          mappedUser.children = mapBackendChildren(profile.children || []);
-          mappedUser.creditBalance = profile.walletBalance;
-        } catch {
-          // Profile fetch failed — user can still proceed
-        }
-      }
-
+      const mappedUser = await enrichUserProfile(mapLoginToUser(result));
       setUser(mappedUser);
     } finally {
       setIsLoading(false);
@@ -184,21 +187,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await authService.forgotPassword(email);
   };
 
-  // Re-fetch parent profile (call after adding/editing children)
+  // Re-fetch profile (call after editing profile, adding children, uploading photo, etc.)
   const refreshProfile = useCallback(async () => {
-    if (!user || user.role !== "parent") return;
+    if (!user) return;
     try {
-      const profile = await userService.getParentProfile();
-      setUser((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          fullName: `${profile.firstName} ${profile.lastName}`,
-          phone: profile.phone || undefined,
-          children: mapBackendChildren(profile.children || []),
-          creditBalance: profile.walletBalance,
-        };
-      });
+      if (user.role === "parent") {
+        const profile = await userService.getParentProfile();
+        setUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            fullName: `${profile.firstName} ${profile.lastName}`,
+            phone: profile.phone || undefined,
+            children: mapBackendChildren(profile.children || []),
+            creditBalance: profile.walletBalance,
+          };
+        });
+      } else if (user.role === "tutor") {
+        const profile = await tutorService.getProfile();
+        const diceBear = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
+        setUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            fullName: `${profile.firstName} ${profile.lastName}`,
+            phone: profile.phone || undefined,
+            avatar: profile.profilePhotoUrl || diceBear,
+          };
+        });
+      }
     } catch {
       // Silent fail
     }

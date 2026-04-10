@@ -9,7 +9,7 @@ const Testimonials = () => {
       name: "Aarav Patel",
       role: "Parent of 2",
       image: "https://randomuser.me/api/portraits/men/32.jpg",
-      text: "Indu AE has been a game-changer for my children. The violin lessons they're taking have helped build confidence and a genuine love for music. Their tutor is not just skilled but incredibly patient and encouraging.",
+      text: "Indu has been a game-changer for my children. The violin lessons they're taking have helped build confidence and a genuine love for music. Their tutor is not just skilled but incredibly patient and encouraging.",
       rating: 5,
       tutorName: "Ms. Priya",
       className: "Beginner Violin"
@@ -19,7 +19,7 @@ const Testimonials = () => {
       name: "Meera Sharma",
       role: "Parent of a 9-year-old",
       image: "https://randomuser.me/api/portraits/women/44.jpg",
-      text: "My son struggled with math for years until we found Mr. Rajan's class on Indu AE. The way he explains concepts has made all the difference. Now my son looks forward to math homework, something I never thought possible!",
+      text: "My son struggled with math for years until we found Mr. Rajan's class on Indu. The way he explains concepts has made all the difference. Now my son looks forward to math homework, something I never thought possible!",
       rating: 5,
       tutorName: "Mr. Rajan",
       className: "Math Mastery"
@@ -29,7 +29,7 @@ const Testimonials = () => {
       name: "Vikram Singh",
       role: "Parent of 3",
       image: "https://randomuser.me/api/portraits/men/62.jpg",
-      text: "The coding classes on Indu AE have opened up a whole new world for my daughter. She's created her own games and animations after just 2 months of lessons. The flexible scheduling also works perfectly with our busy family life.",
+      text: "The coding classes on Indu have opened up a whole new world for my daughter. She's created her own games and animations after just 2 months of lessons. The flexible scheduling also works perfectly with our busy family life.",
       rating: 4,
       tutorName: "Ms. Anjali",
       className: "Coding for Kids"

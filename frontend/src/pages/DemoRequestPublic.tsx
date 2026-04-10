@@ -158,7 +158,7 @@ const DemoRequestPublic = () => {
       <header className="border-b bg-white/80 backdrop-blur">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/indu.png" alt="Indu AE" className="h-8 object-contain" />
+            <img src="/indu.png" alt="Indu" className="h-8 object-contain" />
           </Link>
           {!user && (
             <Link to="/auth/login">

@@ -16,13 +16,13 @@ const Footer = () => {
               <div className="h-12 w-48 relative">
                 <img
                   src="/indu.png"
-                  alt="Indu AE Logo"
+                  alt="Indu Logo"
                   className="h-full object-contain brightness-0 invert"
                 />
               </div>
             </Link>
             <p className="text-gray-400 mb-6 max-w-md">
-              Indu AE connects passionate tutors with eager learners for live, interactive online classes in any subject. Discover your passion today.
+              Indu connects passionate tutors with eager learners for live, interactive online classes in any subject. Discover your passion today.
             </p>
             <div className="flex space-x-4">
               <SocialLink icon={<Facebook size={18} />} href="#" />
@@ -68,7 +68,7 @@ const Footer = () => {
             <div className="mt-6">
               <div className="flex items-center text-gray-400 text-sm mb-2">
                 <Mail className="h-4 w-4 mr-2" />
-                <a href="mailto:support@induae.com">support@induae.com</a>
+                <a href="mailto:support@indu.ae">support@indu.ae</a>
               </div>
               <div className="flex items-center text-gray-400 text-sm">
                 <Phone className="h-4 w-4 mr-2" />
@@ -81,7 +81,7 @@ const Footer = () => {
         <div className="border-t border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-gray-500 text-sm mb-4 md:mb-0">
-              &copy; {currentYear} Indu AE. All rights reserved.
+              &copy; {currentYear} Indu. All rights reserved.
             </div>
             <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-gray-500">
               <a href="#" className="hover:text-white transition-colors">Terms</a>

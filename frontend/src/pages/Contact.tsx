@@ -52,7 +52,7 @@ const contactMethods = [
       "Partnership & collaboration inquiries",
     ],
     cta: "Send Email",
-    href: "mailto:support@induae.com",
+    href: "mailto:support@indu.ae",
     accent: "bg-sky-50 border-sky-200 hover:border-sky-400",
     iconBg: "bg-sky-100 text-sky-600",
   },

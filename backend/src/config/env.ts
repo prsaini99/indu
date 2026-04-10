@@ -16,7 +16,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
   FRONTEND_URL: z.string().default('http://localhost:5173'),
-  EMAIL_FROM: z.string().default('noreply@induae.com'),
+  EMAIL_FROM: z.string().default('noreply@indu.ae'),
 
   // Stripe (M9)
   STRIPE_SECRET_KEY: z.string().optional(),

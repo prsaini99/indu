@@ -118,7 +118,7 @@ const ParentDashboardLayout = ({ children }: ParentDashboardLayoutProps) => {
         <div className="flex h-16 items-center px-4 md:px-6">
           <Link to="/" className="flex items-center mr-4">
             <div className="relative h-10 w-40">
-              <img src="/indu.png" alt="Indu AE Logo" className="h-full object-contain" />
+              <img src="/indu.png" alt="Indu Logo" className="h-full object-contain" />
             </div>
           </Link>
 

@@ -63,7 +63,7 @@ const Login = () => {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       await login(data.email, data.password);
-      toast({ title: "Login successful!", description: "Welcome back to Indu AE." });
+      toast({ title: "Login successful!", description: "Welcome back to Indu." });
       // Navigation handled by useEffect above once user state updates
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: { code?: string; message?: string } }>;
@@ -95,7 +95,7 @@ const Login = () => {
   return (
     <PageLayout
       title="Welcome Back"
-      description="Log in to your Indu AE account to access your classes and continue your learning journey."
+      description="Log in to your Indu account to access your classes and continue your learning journey."
     >
       <div className="max-w-md mx-auto">
         <Form {...form}>
@@ -185,11 +185,11 @@ const Login = () => {
           <p className="text-xs text-muted-foreground text-center mb-3">Quick Login (Dev Only)</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Parent", email: "testparent@induae.com", color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" },
-              { label: "Tutor", email: "testtutor@induae.com", color: "bg-teal-100 text-teal-700 hover:bg-teal-200" },
-              { label: "Consultant", email: "testconsultant@induae.com", color: "bg-amber-100 text-amber-700 hover:bg-amber-200" },
-              { label: "Admin", email: "testadmin@induae.com", color: "bg-purple-100 text-purple-700 hover:bg-purple-200" },
-              { label: "Super Admin", email: "admin@induae.com", color: "bg-red-100 text-red-700 hover:bg-red-200" },
+              { label: "Parent", email: "testparent@indu.ae", color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" },
+              { label: "Tutor", email: "testtutor@indu.ae", color: "bg-teal-100 text-teal-700 hover:bg-teal-200" },
+              { label: "Consultant", email: "testconsultant@indu.ae", color: "bg-amber-100 text-amber-700 hover:bg-amber-200" },
+              { label: "Admin", email: "testadmin@indu.ae", color: "bg-purple-100 text-purple-700 hover:bg-purple-200" },
+              { label: "Super Admin", email: "admin@indu.ae", color: "bg-red-100 text-red-700 hover:bg-red-200" },
             ].map((acc) => (
               <Button
                 key={acc.label}
@@ -199,7 +199,7 @@ const Login = () => {
                 className={`text-xs font-medium ${acc.color}`}
                 disabled={isLoading}
                 onClick={async () => {
-                  const password = acc.email === "admin@induae.com" ? "Admin123!" : "Test123!";
+                  const password = acc.email === "admin@indu.ae" ? "Admin123!" : "Test123!";
                   try {
                     await login(acc.email, password);
                     toast({ title: `Logged in as ${acc.label}` });

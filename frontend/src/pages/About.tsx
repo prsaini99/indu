@@ -57,7 +57,7 @@ const About = () => {
               Who We Are
             </h2>
             <p className="text-lg text-gray-600 text-center leading-relaxed">
-              Indu AE is a next-generation online tutoring platform connecting
+              Indu is a next-generation online tutoring platform connecting
               highly qualified Indian educators with students across the UAE. We
               believe every child deserves access to world-class teaching --
               personalized, affordable, and transparent. Our platform bridges the

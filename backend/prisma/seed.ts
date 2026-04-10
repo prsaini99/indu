@@ -9,10 +9,10 @@ async function main() {
   // 1. Create Super Admin
   const adminPassword = await bcrypt.hash('Admin123!', 12);
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@induae.com' },
+    where: { email: 'admin@indu.ae' },
     update: {},
     create: {
-      email: 'admin@induae.com',
+      email: 'admin@indu.ae',
       passwordHash: adminPassword,
       role: Role.SUPER_ADMIN,
       isActive: true,
@@ -26,10 +26,10 @@ async function main() {
 
   // Admin
   const admin = await prisma.user.upsert({
-    where: { email: 'testadmin@induae.com' },
+    where: { email: 'testadmin@indu.ae' },
     update: {},
     create: {
-      email: 'testadmin@induae.com',
+      email: 'testadmin@indu.ae',
       passwordHash: testPassword,
       role: Role.ADMIN,
       isActive: true,
@@ -49,10 +49,10 @@ async function main() {
 
   // Parent
   const parentUser = await prisma.user.upsert({
-    where: { email: 'testparent@induae.com' },
+    where: { email: 'testparent@indu.ae' },
     update: {},
     create: {
-      email: 'testparent@induae.com',
+      email: 'testparent@indu.ae',
       passwordHash: testPassword,
       role: Role.PARENT,
       isActive: true,
@@ -73,10 +73,10 @@ async function main() {
 
   // Tutor
   const tutorUser = await prisma.user.upsert({
-    where: { email: 'testtutor@induae.com' },
+    where: { email: 'testtutor@indu.ae' },
     update: {},
     create: {
-      email: 'testtutor@induae.com',
+      email: 'testtutor@indu.ae',
       passwordHash: testPassword,
       role: Role.TUTOR,
       isActive: true,
@@ -100,10 +100,10 @@ async function main() {
 
   // Consultant
   const consultantUser = await prisma.user.upsert({
-    where: { email: 'testconsultant@induae.com' },
+    where: { email: 'testconsultant@indu.ae' },
     update: {},
     create: {
-      email: 'testconsultant@induae.com',
+      email: 'testconsultant@indu.ae',
       passwordHash: testPassword,
       role: Role.CONSULTANT,
       isActive: true,

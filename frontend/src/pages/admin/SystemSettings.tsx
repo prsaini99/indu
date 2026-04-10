@@ -37,15 +37,15 @@ const SystemSettings = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="platform-name">Platform Name</Label>
-                  <Input id="platform-name" defaultValue="Indu AE" />
+                  <Input id="platform-name" defaultValue="Indu" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="platform-url">Platform URL</Label>
-                  <Input id="platform-url" defaultValue="https://induae.com" />
+                  <Input id="platform-url" defaultValue="https://indu.ae" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="support-email">Support Email</Label>
-                  <Input id="support-email" defaultValue="support@induae.com" />
+                  <Input id="support-email" defaultValue="support@indu.ae" />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="maintenance-mode">Maintenance Mode</Label>
@@ -195,7 +195,7 @@ const SystemSettings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="db-name">Database Name</Label>
-                  <Input id="db-name" defaultValue="induae" />
+                  <Input id="db-name" defaultValue="indu" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="db-user">Username</Label>
@@ -230,7 +230,7 @@ const SystemSettings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="smtp-user">SMTP Username</Label>
-                  <Input id="smtp-user" defaultValue="noreply@induae.com" />
+                  <Input id="smtp-user" defaultValue="noreply@indu.ae" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="smtp-pass">SMTP Password</Label>

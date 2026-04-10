@@ -19,7 +19,7 @@ const ParentDashboard = () => {
   const parentTz = user?.timezone || "Asia/Dubai";
 
   useEffect(() => {
-    document.title = "Parent Dashboard | Indu AE";
+    document.title = "Parent Dashboard | Indu";
     dashboardService.getParentDashboard()
       .then(setStats)
       .catch(() => {})

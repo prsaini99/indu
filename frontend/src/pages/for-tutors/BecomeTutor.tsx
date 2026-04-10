@@ -82,8 +82,8 @@ const BecomeTutor = () => {
 
   const faqs = [
     { question: "What qualifications do I need to become a tutor?", answer: "We look for tutors with expertise in their subject area, which could include formal qualifications (degrees, certifications) or demonstrated mastery through professional experience. Most importantly, you must have a passion for teaching and excellent communication skills." },
-    { question: "How much can I earn on Indu AE?", answer: "Earnings vary based on your subject, experience, class format, and pricing strategy. Many of our successful tutors earn a substantial part-time or full-time income." },
-    { question: "What technology do I need to teach on Indu AE?", answer: "You'll need a reliable internet connection, a computer with webcam and microphone, and a quiet, well-lit teaching space. Our platform works in modern browsers without requiring additional software installation." },
+    { question: "How much can I earn on Indu?", answer: "Earnings vary based on your subject, experience, class format, and pricing strategy. Many of our successful tutors earn a substantial part-time or full-time income." },
+    { question: "What technology do I need to teach on Indu?", answer: "You'll need a reliable internet connection, a computer with webcam and microphone, and a quiet, well-lit teaching space. Our platform works in modern browsers without requiring additional software installation." },
     { question: "How long does the application process take?", answer: "The typical application review takes 3-5 business days. Once approved, your account is created by our admin team and you can start immediately." },
     { question: "Can I teach multiple subjects?", answer: "Absolutely! Many tutors teach across several related subjects where they have expertise. You can be assigned to different courses for various topics and grade levels." },
   ];
@@ -99,7 +99,7 @@ const BecomeTutor = () => {
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-4">Transform Lives Through Teaching</h2>
             <p className="text-gray-600 mb-6">
-              Share your passion and expertise with eager young minds on Indu AE — the UAE's growing platform for personalized education. Apply below and our team will review your application.
+              Share your passion and expertise with eager young minds on Indu — the UAE's growing platform for personalized education. Apply below and our team will review your application.
             </p>
             <Button size="lg" className="bg-talent-primary hover:bg-talent-secondary text-white" onClick={() => document.getElementById("application-form")?.scrollIntoView({ behavior: "smooth" })}>
               Apply to Teach
@@ -116,7 +116,7 @@ const BecomeTutor = () => {
 
         {/* Benefits section */}
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Why Teach on Indu AE</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Why Teach on Indu</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {benefits.map((benefit, index) => (
               <div key={index} className="p-6 border border-gray-200 rounded-xl hover:shadow-md transition-shadow">
@@ -196,7 +196,7 @@ const BecomeTutor = () => {
                   </div>
                   <div>
                     <Label htmlFor="bio">About Yourself</Label>
-                    <Textarea id="bio" name="bio" value={form.bio} onChange={handleChange} placeholder="Tell us about your teaching philosophy, experience, and why you'd like to join Indu AE..." rows={4} />
+                    <Textarea id="bio" name="bio" value={form.bio} onChange={handleChange} placeholder="Tell us about your teaching philosophy, experience, and why you'd like to join Indu..." rows={4} />
                   </div>
                   <Button type="submit" className="w-full bg-talent-primary hover:bg-talent-secondary text-white" size="lg" disabled={submitting}>
                     {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Submit Application"}

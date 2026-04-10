@@ -169,12 +169,12 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ===== WHY INDU AE ===== */}
+        {/* ===== WHY INDU ===== */}
         <section className="py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-14">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Why Parents Choose Indu AE
+                Why Parents Choose Indu
               </h2>
               <p className="text-gray-600 text-lg">
                 We combine India's best teaching talent with technology to deliver a personalized, safe, and effective learning experience.
@@ -340,7 +340,7 @@ const Index = () => {
                 What Parents Say
               </h2>
               <p className="text-gray-600 text-lg">
-                Hear from families across the UAE who trust Indu AE for their children's education.
+                Hear from families across the UAE who trust Indu for their children's education.
               </p>
             </div>
 
@@ -355,7 +355,7 @@ const Index = () => {
                 {
                   name: "Rajesh Nair",
                   location: "Abu Dhabi",
-                  text: "We tried 3 other platforms before Indu AE. The difference is the consultant who actually understands our needs and matches the right tutor. My son loves his Science classes.",
+                  text: "We tried 3 other platforms before Indu. The difference is the consultant who actually understands our needs and matches the right tutor. My son loves his Science classes.",
                   rating: 5,
                 },
                 {

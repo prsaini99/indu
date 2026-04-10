@@ -79,7 +79,7 @@ const BecomeConsultant = () => {
   ];
 
   const faqs = [
-    { question: "What does a consultant do on Indu AE?", answer: "Consultants act as mediators between parents and tutors. You handle incoming demo requests, match parents with suitable tutors, schedule demo and regular class bookings, and ensure a smooth learning experience for families." },
+    { question: "What does a consultant do on Indu?", answer: "Consultants act as mediators between parents and tutors. You handle incoming demo requests, match parents with suitable tutors, schedule demo and regular class bookings, and ensure a smooth learning experience for families." },
     { question: "What qualifications do I need?", answer: "We look for individuals with strong communication skills, education industry experience, and organizational abilities. A background in education management, counseling, or parent engagement is a plus." },
     { question: "How much can I earn?", answer: "Earnings depend on the number of bookings you manage and your level of activity on the platform. Active consultants with good parent satisfaction ratings earn competitive income." },
     { question: "How long does the application process take?", answer: "The typical application review takes 3-5 business days. Once approved, your account is created by our admin team and you can start immediately." },
@@ -97,7 +97,7 @@ const BecomeConsultant = () => {
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-4">Bridge the Gap Between Parents & Tutors</h2>
             <p className="text-gray-600 mb-6">
-              As an Indu AE consultant, you'll be the key mediator — handling demo requests, matching families with tutors, and managing the entire booking process. Apply below to join our team.
+              As an Indu consultant, you'll be the key mediator — handling demo requests, matching families with tutors, and managing the entire booking process. Apply below to join our team.
             </p>
             <Button size="lg" className="bg-talent-primary hover:bg-talent-secondary text-white" onClick={() => document.getElementById("application-form")?.scrollIntoView({ behavior: "smooth" })}>
               Apply to Consult
@@ -114,7 +114,7 @@ const BecomeConsultant = () => {
 
         {/* Benefits section */}
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Why Consult on Indu AE</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Why Consult on Indu</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {benefits.map((benefit, index) => (
               <div key={index} className="p-6 border border-gray-200 rounded-xl hover:shadow-md transition-shadow">
